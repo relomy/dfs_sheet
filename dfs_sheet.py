@@ -128,20 +128,7 @@ def get_nfl_snaps(wb):
             continue
 
         # convert weeks dict to list
-        all_weeks = []
-        for weekly_targets in weeks:
-            # if weeks is None, put in blank string
-            # 0 would mean they played but didn't get a snap
-            if weekly_targets is None:
-                all_weeks.append('')
-            else:
-                all_weeks.append(weekly_targets)
-
-        # pad weeks to 16 (a = [])
-        # more visual/pythonic
-        # a = (a + N * [''])[:N]
-        N = 16
-        all_weeks = (all_weeks + N * [''])[:N]
+        all_weeks = conv_weeks_to_padded_list(weeks)
 
         # add three lists together
         pre_weeks = [name, position, team, season_average]
@@ -185,20 +172,7 @@ def get_nfl_targets(wb):
             continue
 
         # convert weeks dict to list
-        all_weeks = []
-        for weekly_targets in weeks:
-            # if weeks is None, put in blank string
-            # 0 would mean they played but didn't get a snap
-            if weekly_targets is None:
-                all_weeks.append('')
-            else:
-                all_weeks.append(weekly_targets)
-
-        # pad weeks to 16 (a = [])
-        # more visual/pythonic
-        # a = (a + N * [''])[:N]
-        N = 16
-        all_weeks = (all_weeks + N * [''])[:N]
+        all_weeks = conv_weeks_to_padded_list(weeks)
 
         # add three lists together
         pre_weeks = [name, position, team, season_average]
@@ -246,20 +220,7 @@ def get_nfl_receptions(wb):
             continue
 
         # convert weeks dict to list
-        all_weeks = []
-        for i in range(0, len(weeks)):
-            # if weeks is None, put in blank string
-            # 0 would mean they played but didn't get a snap
-            if weeks[str(i + 1)] is None:
-                all_weeks.append('')
-            else:
-                all_weeks.append(weeks[str(i + 1)])
-
-        # pad weeks to 16 (a = [])
-        # more visual/pythonic
-        # a = (a + N * [''])[:N]
-        N = 16
-        all_weeks = (all_weeks + N * [''])[:N]
+        all_weeks = conv_weeks_to_padded_list(weeks)
 
         # add three lists together
         pre_weeks = [name, position, team, season_average]
@@ -302,6 +263,21 @@ def get_nfl_rush_atts(wb):
             continue
 
         # convert weeks dict to list
+        all_weeks = conv_weeks_to_padded_list(weeks)
+
+        # add three lists together
+        pre_weeks = [name, position, team, season_average]
+        post_weeks = [attempts, touchdowns]
+        ls = pre_weeks + all_weeks + post_weeks
+
+        wb[title].append(ls)
+
+
+def conv_weeks_to_padded_list(weeks):
+    """Convert weeks dict or list to padded list (16 weeks)."""
+    if isinstance(weeks, list):
+        pass
+    elif isinstance(weeks, dict):
         all_weeks = []
         for i in range(0, len(weeks)):
             # if weeks is None, put in blank string
@@ -317,12 +293,7 @@ def get_nfl_rush_atts(wb):
         N = 16
         all_weeks = (all_weeks + N * [''])[:N]
 
-        # add three lists together
-        pre_weeks = [name, position, team, season_average]
-        post_weeks = [attempts, touchdowns]
-        ls = pre_weeks + all_weeks + post_weeks
-
-        wb[title].append(ls)
+    return all_weeks
 
 
 def print_position_ws(wb, position, fields):
@@ -363,12 +334,10 @@ def get_dvoa_rankings(wb):
         with open(filename, 'r') as html_file:
             soup = BeautifulSoup(html_file, 'html5lib')
 
-    # find all tables in the html
+    # find all tables (3) in the html
     table = soup.findAll('table')
 
     if table:
-        print("Found {} tables".format(len(table)))
-
         # create worksheet
         title = 'TEAMDEF'
         wb.create_sheet(title=title)
