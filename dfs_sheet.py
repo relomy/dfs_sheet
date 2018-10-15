@@ -1,3 +1,4 @@
+import json
 import requests
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Border, Side, Font, colors
@@ -21,24 +22,162 @@ def print_header(sheet):
             cell.fill = PatternFill(patternType='solid', start_color=light_orange, end_color=light_orange)
 
 
-def get_nfl_receptions():
+def get_nfl_targets(wb):
+    ENDPOINT = 'https://api.lineups.com/nfl/fetch/targets/2018/RB'
+    filename = 'nfl_targets.json'
+
+    # if file doesn't exist, let's pull it. otherwise - use the file.
+    data = ''
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
+
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
+
+        # store response
+        data = r.json()
+
+        # dump json to file for future use to avoid multiple API pulls
+        with open(filename, 'w') as outfile:
+            json.dump(data, outfile)
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load json from file
+        with open(filename, 'r') as json_file:
+            data = json.load(json_file)
+
+    player_data = data['data']
+
+    # create worksheet
+    wb.create_sheet(title="TARGETS")
+    header = ['name', 'position', 'rating', 'team', 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
+              'week7', 'week8', 'week9', 'week10', 'week11', 'week12', 'week13', 'week14',
+              'week15', 'week16', 'targets', 'average', 'recv touchdowns']
+    wb["TARGETS"].append(header)
+
+    for d in player_data:
+        name = d['full_name']
+        position = d['position']
+        rating = d['lineups_rating']
+        team = d['team']
+        targets = d['total']
+        weeks = d['weeks']  # dict
+        average = d['average']
+        recv_touchdowns = d['receiving_touchdowns']
+        catch_percentage = d['catch_percentage']
+        season_target_percent = d['season_target_percent']
+
+        # convert weeks dict to list
+        all_weeks = []
+        for weekly_targets in weeks:
+            # if weeks is None, put in blank string
+            # 0 would mean they played but didn't get a snap
+            if weekly_targets is None:
+                all_weeks.append('')
+            else:
+                all_weeks.append(weekly_targets)
+
+        # pad weeks to 16 (a = [])
+        # more visual/pythonic
+        # a = (a + N * [''])[:N]
+        N = 16
+        all_weeks = (all_weeks + N * [''])[:N]
+
+        # add three lists together
+        pre_weeks = [name, position, rating, team]
+        post_weeks = [targets, average, recv_touchdowns]
+        ls = pre_weeks + all_weeks + post_weeks
+
+        # insert all_weeks list into ls
+        # ls = [name, position, rating, team, receptions, average, touchdowns]
+        # print("trying to insert: ls[2:{}]".format(len(all_weeks)))
+        # ls[4:len(all_weeks)-1] = all_weeks
+        # print(ls)
+
+        wb["TARGETS"].append(ls)
+
+
+def get_nfl_receptions(wb):
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/receptions/2018/RB'
-    # set parameters
-    # params = {
-    #     'leagueId': league_id,
-    #     'seasonId': year
-    # }
+    filename = 'nfl_receptions.json'
 
-    # send GET request
-    r = requests.get(ENDPOINT)
-    status = r.status_code
+    # if file doesn't exist, let's pull it. otherwise - use the file.
+    data = ''
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
 
-    # if not successful, raise an exception
-    if status != 200:
-        raise Exception('[script.py] Requests status != 200. It is: {0}'.format(status))
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
 
-    # store response
-    data = r.json()
+        # store response
+        data = r.json()
+
+        # dump json to file for future use to avoid multiple API pulls
+        with open(filename, 'w') as outfile:
+            json.dump(data, outfile)
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load json from file
+        with open(filename, 'r') as json_file:
+            data = json.load(json_file)
+
+    player_data = data['data']
+
+    # create worksheet
+    wb.create_sheet(title="RECEPTIONS")
+    header = ['name', 'position', 'rating', 'team', 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
+              'week7', 'week8', 'week9', 'week10', 'week11', 'week12', 'week13', 'week14',
+              'week15', 'week16', 'receptions', 'average', 'touchdowns']
+    wb["RECEPTIONS"].append(header)
+
+    for d in player_data:
+        #{'receptions': 0.0, 'id': 20977, 'lineups_rating': None, 'total': 0.0, 'team': 'DET', 'profile_url': '/nfl/player-stats/ameer-abdullah', 'fantasy_position_depth_order': 4, 'average': 0.0, 'position': 'RB', 'touchdowns': 0.0, 'name': 'Ameer Abdullah', 'team_depth_chart_route': '/nfl/depth-charts/detroit-lions', 'weeks': {'1': None, '2': None, '3': None, '4': None, '5': None}}
+
+        name = d['name']
+        position = d['position']
+        rating = d['lineups_rating']
+        team = d['team']
+        receptions = d['receptions']
+        weeks = d['weeks']  # dict
+        average = d['average']
+        touchdowns = d['touchdowns']
+
+        # convert weeks dict to list
+        all_weeks = []
+        for i in range(0, len(weeks)):
+            # if weeks is None, put in blank string
+            # 0 would mean they played but didn't get a snap
+            if weeks[str(i + 1)] is None:
+                all_weeks.append('')
+            else:
+                all_weeks.append(weeks[str(i + 1)])
+
+        # pad weeks to 16 (a = [])
+        # more visual/pythonic
+        # a = (a + N * [''])[:N]
+        N = 16
+        all_weeks = (all_weeks + N * [''])[:N]
+
+        # add three lists together
+        pre_weeks = [name, position, rating, team]
+        post_weeks = [receptions, average, touchdowns]
+        ls = pre_weeks + all_weeks + post_weeks
+
+        # insert all_weeks list into ls
+        # ls = [name, position, rating, team, receptions, average, touchdowns]
+        # print("trying to insert: ls[2:{}]".format(len(all_weeks)))
+        # ls[4:len(all_weeks)-1] = all_weeks
+        # print(ls)
+
+        wb["RECEPTIONS"].append(ls)
 
 
 def print_position_ws(wb, position, fields):
@@ -54,8 +193,6 @@ def print_position_ws(wb, position, fields):
 
 
 def main():
-    get_nfl_receptions()
-    exit()
     fn = 'DKSalaries.csv'
     dest_filename = 'sheet.xlsx'
 
@@ -66,6 +203,8 @@ def main():
 
     # guess types (numbers, floats, etc)
     wb.guess_types = True
+
+
 
     # ws2 = wb.create_sheet(title='QB')
 
@@ -99,6 +238,10 @@ def main():
         # for line in f:
         #     for field in line.split(','):
         #         ws1.cell()
+
+    # pull stats
+    get_nfl_receptions(wb)
+    get_nfl_targets(wb)
 
     # save workbook (.xlsx file)
     wb.save(filename=dest_filename)
