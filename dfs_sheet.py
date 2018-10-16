@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, PatternFill, Border, Side, Font, colors
 from openpyxl.formatting.rule import ColorScaleRule
+from openpyxl.utils import get_column_letter
 # from openpyxl.cell import get_column_letter
 from os import path
 
@@ -477,36 +478,208 @@ def get_dvoa_recv_rankings(wb, soup_table, title):
             wb[title].append(cols)
 
 
-def RB_tab(wb, values):
-    title = 'RB'
+def get_oline_rankings(wb):
+    ENDPOINT = 'https://www.footballoutsiders.com/stats/ol'
+    filename = 'html_oline.html'
 
-    # create RB tab if it does not exist
+    soup = None
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
+
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
+
+        # dump html to file to avoid multiple requests
+        with open(filename, 'w') as outfile:
+            print(r.text, file=outfile)
+
+        soup = BeautifulSoup(r.text, 'html5lib')
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load html from file
+        with open(filename, 'r') as html_file:
+            soup = BeautifulSoup(html_file, 'html5lib')
+
+    # find all tables (2) in the html
+    table = soup.findAll('table')
+
+    if table:
+        # create worksheet
+        title = 'OLINE'
+        wb.create_sheet(title=title)
+
+        oline_stats = table[0]
+
+        # find header
+        table_header = oline_stats.find('thead')
+        # there is one header row
+        header_row = table_header.find('tr')
+        # loop through header columns and append to worksheet
+        header_cols = header_row.find_all('th')
+        header = [ele.text.strip() for ele in header_cols]
+        wb[title].append(header)
+
+        # find the rest of the table header_rows
+        rows = oline_stats.find_all('tr')
+        for row in rows:
+            cols = row.find_all('td')
+            cols = [ele.text.strip() for ele in cols]
+            if cols:
+                wb[title].append(cols)
+
+
+def get_dline_rankings(wb):
+    ENDPOINT = 'https://www.footballoutsiders.com/stats/dl'
+    filename = 'html_dline.html'
+
+    soup = None
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
+
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
+
+        # dump html to file to avoid multiple requests
+        with open(filename, 'w') as outfile:
+            print(r.text, file=outfile)
+
+        soup = BeautifulSoup(r.text, 'html5lib')
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load html from file
+        with open(filename, 'r') as html_file:
+            soup = BeautifulSoup(html_file, 'html5lib')
+
+    # find all tables (2) in the html
+    table = soup.findAll('table')
+
+    if table:
+        # create worksheet
+        title = 'DLINE'
+        wb.create_sheet(title=title)
+
+        oline_stats = table[0]
+
+        # find header
+        table_header = oline_stats.find('thead')
+        # there is one header row
+        header_row = table_header.find('tr')
+        # loop through header columns and append to worksheet
+        header_cols = header_row.find_all('th')
+        header = [ele.text.strip() for ele in header_cols]
+        wb[title].append(header)
+
+        # find the rest of the table header_rows
+        rows = oline_stats.find_all('tr')
+        for row in rows:
+            cols = row.find_all('td')
+            cols = [ele.text.strip() for ele in cols]
+            if cols:
+                wb[title].append(cols)
+
+
+def position_tab(wb, values, title):
+    # create positional tab if it does not exist
     # and set header(s)
     if title not in wb.sheetnames:
         wb.create_sheet(title=title)
 
-        # Starting with D1
-        # DK, DK%, blank, VEGASx3, MATCHUPx4, SEASON,x3, LAST WEEKx3, RANKINGSx2
-        # top header
-        wb[title]['D1'] = 'DK'
-        wb[title]['G1'] = 'VEGAS'
-        wb[title]['J1'] = 'MATCHUP'
-        wb[title]['N1'] = 'SEASON'
-        wb[title]['Q1'] = 'LAST WEEK'
-        wb[title]['T1'] = 'RANKINGS'
+        # style for merge + center
+        al = Alignment(horizontal="center", vertical="center")
 
         # second header
-        header_fields = [
+        all_positions_header = [
             'Position', 'Name', 'Opp', 'Salary', 'Salary%', 'Abbv',
-            'Implied Total', 'O/U', 'Line', 'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line',
-            'Snap%', 'Rush ATTs', 'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG'
-            'ECR'
+            'Implied Total', 'O/U', 'Line'
         ]
-        wb[title].append(header_fields)
+
+        # set row height
+        wb[title].row_dimensions[2].height = 40
+
+        # more header fields based on position
+        position_fields = []
+        if title == 'RB':
+
+
+            # Starting with D1
+            # DK, DK%, blank, VEGASx3, MATCHUPx4, SEASON,x3, LAST WEEKx3, RANKINGSx2
+            # top header
+            # bold, white font
+            font = Font(b=True, color="FFFFFFFF")
+
+            # top level header
+            wb[title]['D1'] = 'DK'
+            style_range(wb[title], 'D1:F1', font=font, fill=PatternFill(patternType="solid", fgColor="FF000000"), alignment=al)
+            wb[title]['G1'] = 'VEGAS'
+            style_range(wb[title], 'G1:I1', font=font, fill=PatternFill(patternType="solid", fgColor="FFFFC000"), alignment=al)
+            wb[title]['J1'] = 'MATCHUP'
+            style_range(wb[title], 'J1:M1', font=font, fill=PatternFill(patternType="solid", fgColor="FFED7D31"), alignment=al)
+            wb[title]['N1'] = 'SEASON'
+            style_range(wb[title], 'N1:P1', font=font, fill=PatternFill(patternType="solid", fgColor="FF5B9BD5"), alignment=al)
+            wb[title]['Q1'] = 'LAST WEEK'
+            style_range(wb[title], 'Q1:S1', font=font, fill=PatternFill(patternType="solid", fgColor="FF4472C4"), alignment=al)
+            wb[title]['T1'] = 'RANKINGS'
+            style_range(wb[title], 'T1:U1', font=font, fill=PatternFill(patternType="solid", fgColor="FF70AD47"), alignment=al)
+
+            position_fields = [
+                'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line', 'Snap%', 'Rush ATTs',
+                'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR'
+            ]
+        elif title == 'WR':
+            # set row height
+            wb[title].row_dimensions[2].height = 40
+            # Starting with D1
+            # DK, DK%, blank, VEGASx3, MATCHUPx4, SEASON,x3, LAST WEEKx3, RANKINGSx2
+            # top header
+            wb[title]['D1'] = 'DK'
+            style_range(wb[title], 'D1:F1', alignment=al)
+            wb[title]['G1'] = 'VEGAS'
+            style_range(wb[title], 'G1:I1', alignment=al)
+            wb[title]['J1'] = 'MATCHUP'
+            style_range(wb[title], 'J1:L1', alignment=al)
+            wb[title]['M1'] = 'SEASON'
+            style_range(wb[title], 'M1:N1', alignment=al)
+            wb[title]['O1'] = 'LAST WEEK'
+            style_range(wb[title], 'O1:P1', alignment=al)
+            wb[title]['Q1'] = 'RANKINGS'
+            style_range(wb[title], 'Q1:R1', alignment=al)
+
+            position_fields = [
+                'DVOA', 'WR1', 'WR2', 'Snap%', 'Targets', 'Snap%', 'Targets', 'Average PPG', 'ECR'
+            ]
+
+        header = all_positions_header + position_fields
+
+        append_row = wb[title].max_row + 1
+
+        # change row font and alignment
+        font = Font(b=True, color="FF000000")
+        al = Alignment(horizontal="center", vertical="center", wrapText=True)
+
+        # just set for row range
+        rng = "{0}:{1}".format(2, 2)
+        for cell in wb[title][rng]:
+            cell.font = font
+            cell.alignment = al
+
+        for i, field in enumerate(header):
+            wb[title].cell(row=append_row, column=i + 1, value=field)
 
     keys = ['pos', 'name_id', 'name', 'id', 'roster_pos', 'salary', 'matchup', 'abbv', 'avg_ppg']
     stats_dict = dict(zip(keys, values))
     stats_dict['salary_perc'] = "{0:.1%}".format(float(stats_dict['salary']) / 50000)
+
+    # 'fix' name to remove extra stuff like Jr or III
+    name = ' '.join(stats_dict['name'].split(' ')[:2])
+    stats_dict['name'] = name
 
     # find opp, opp_excel, and game_time
     home_at_away, game_time = stats_dict['matchup'].split(' ', 1)
@@ -517,14 +690,14 @@ def RB_tab(wb, values):
         stats_dict['opp_excel'] = "vs. {}".format(away_team)
     else:
         stats_dict['opp'] = home_team
-        stats_dict['opp_excel'] = "at {}".format(away_team)
+        stats_dict['opp_excel'] = "at {}".format(home_team)
 
     append_row = wb[title].max_row + 1
 
     # vegas formula OU
     # =INDEX(Vegas!$G$2:$G$29,MATCH($E3 & "*",Vegas!$B$2:$B$29,0))
     # insert rows of data
-    lame_list = [
+    all_positions_fields = [
         stats_dict['pos'],
         stats_dict['name'],
         stats_dict['opp_excel'],
@@ -536,21 +709,99 @@ def RB_tab(wb, values):
         '=INDEX(Vegas!$D$2:$D$29,MATCH($F{} & "*",Vegas!$B$2:$B$29,0))'.format(append_row)   # line
     ]
 
-    for i, text in enumerate(lame_list, start=1):
-        wb[title].cell(row=append_row, column=i, value=text)
+    # more header fields based on position
+    positional_fields = []
+    if title == 'RB':
+        positional_fields = [
+            # run dvoa
+            '=INDEX(TEAMDEF!$J$2:$J$34,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$2:$B$34,0))'.format(append_row),
+            # pass dvoa (vs. RB)
+            '=INDEX(TEAMDEF!$T$37:$T$68,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$37:$B$68,0))'.format(append_row),
+            # o line
+            '=INDEX(OLINE!$C$2:$C$33,MATCH($F{0},OLINE!$B$2:$B$33,0))'.format(append_row),
+            # d line
+            '=INDEX(DLINE!$C$2:$C$33,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),DLINE!$B$2:$B$33,0))'.format(append_row),
+            # season snap%
+            '=INDEX(SNAPS!$D$2:$D$448,MATCH($B{0} & "*",SNAPS!$A$2:$A$448,0))'.format(append_row),
+            # season rush atts
+            # season targets
+        ]
+    elif title == 'WR':
+        positional_fields = [
+            # pass dvoa
+            '=INDEX(TEAMDEF!$H$2:$H$34,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$2:$B$34,0))'.format(append_row),
+            # vs. WR1
+            '=INDEX(TEAMDEF!$D$37:$D$68,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$37:$B$68,0))'.format(append_row),
+            # vs. WR2
+            '=INDEX(TEAMDEF!$H$37:$H$68,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$37:$B$68,0))'.format(append_row),
+        ]
+
+    row = all_positions_fields + positional_fields
+
+    for i, text in enumerate(row, start=1):
+        nice = wb[title].cell(row=append_row, column=i, value=text)
+        al = Alignment(horizontal="center", vertical="center")
+        nice.alignment = al
+
+    # style column D (salary) with currency
+    for cell in wb[title]['D']:
+        cell.number_format = '$#,##0_);($#,##0)'
+
+    # style column E (salary %) with %/decimals
+    for cell in wb[title]['E']:
+        cell.number_format = '##0.0%'
+
+    # hide column F (abbv)
+    wb[title].column_dimensions['F'].hidden = True
 
 
-def color_ranges(wb):
+def style_ranges(wb):
+    # define colors for colorscale (from excel)
     red = 'F8696B'
     yellow = 'FFEB84'
     green = '63BE7B'
+
     for title in ['QB', 'RB', 'WR', 'TE', 'DST']:
-        wb[title].conditional_formatting.add(
-            'G3:G95',
-            ColorScaleRule(start_type='min', start_color=red,
-                           mid_type='percentile', mid_value=50, mid_color=yellow,
-                           end_type='max', end_color=green)
-        )
+        ws = wb[title]
+        # add filter/sort. excel will not automatically do it!
+        # filter_range = "{0}:{1}".format('D2', ws.max_row)
+        # ws.auto_filter.ref = filter_range
+        # sort_range = "{0}:{1}".format('D3', ws.max_row)
+
+        # ws.auto_filter.add_sort_condition(sort_range)
+        # bigger/positive = green, smaller/negative = red
+        green_to_red_headers = [
+            'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'WR1', 'WR2',
+            'O-Line'
+        ]
+        green_to_red_rule = ColorScaleRule(start_type='min', start_color=red,
+                                           mid_type='percentile', mid_value=50, mid_color=yellow,
+                                           end_type='max', end_color=green)
+        # bigger/positive = red, smaller/negative = green
+        red_to_green_headers = [
+            'Line', 'D-Line'
+        ]
+        red_to_green_rule = ColorScaleRule(start_type='min', start_color=green,
+                                           mid_type='percentile', mid_value=50, mid_color=yellow,
+                                           end_type='max', end_color=red)
+        # color ranges
+        for i in range(1, ws.max_column):
+
+            if ws.cell(row=2, column=i).value in green_to_red_headers:
+                column_letter = get_column_letter(i)
+                # color range (green to red)
+                cell_rng = "{0}{1}:{2}".format(column_letter, '3', ws.max_row)
+                wb[title].conditional_formatting.add(cell_rng, green_to_red_rule)
+            elif ws.cell(row=2, column=i).value in red_to_green_headers:
+                column_letter = get_column_letter(i)
+                # color range (red to green)
+                cell_rng = "{0}{1}:{2}".format(column_letter, '3', ws.max_row)
+                wb[title].conditional_formatting.add(cell_rng, red_to_green_rule)
+
+        # set column widths
+        column_widths = [8, 20, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8]
+        for i, column_width in enumerate(column_widths):
+            ws.column_dimensions[get_column_letter(i + 1)].width = column_width
 
 
 def main():
@@ -560,7 +811,7 @@ def main():
     # create workbook/worksheet
     wb = Workbook()
     ws1 = wb.active
-    ws1.title = 'DKSalaries'
+    ws1.title = 'DEL'
 
     # guess types (numbers, floats, etc)
     wb.guess_types = True
@@ -572,39 +823,43 @@ def main():
         for i, line in enumerate(lines):
             # append header to first worksheet, otherwise skip it
             if i == 0:
-                ws1.append(line.rstrip().split(','))
                 continue
 
             fields = line.rstrip().split(',')
-            if fields[0] == 'RB':
-                RB_tab(wb, fields)
-            elif fields[0] == 'WR':
-                WR_tab(wb, fields)
-            else:
-                # % salary DK
-                salary_perc = "{0:.1%}".format(float(fields[5]) / 50000)
-                salary = "${0}".format(fields[5])
+            position_tab(wb, fields, fields[0])
+            # if fields[0] == 'RB':
+            #     position_tab(wb, fields, 'RB')
+            # elif fields[0] == 'WR':
+            #     position_tab(wb, fields, 'WR')
+            # else:
+            #     # % salary DK
+            #     salary_perc = "{0:.1%}".format(float(fields[5]) / 50000)
+            #     salary = "${0}".format(fields[5])
+            #
+            #     my_fields = [fields[0], fields[2], salary, salary_perc, fields[6], fields[7], fields[8]]
+            #
+            #     # print fields to position-named worksheet
+            #     print_position_ws(wb, fields[0], my_fields)
+            #
+            # # print fields to first worksheet
+            # ws1.append(line.rstrip().split(','))
 
-                my_fields = [fields[0], fields[2], salary, salary_perc, fields[6], fields[7], fields[8]]
-
-                # print fields to position-named worksheet
-                print_position_ws(wb, fields[0], my_fields)
-
-            # print fields to first worksheet
-            ws1.append(line.rstrip().split(','))
-
-    # pull stats
+    # pull stats from lineups.com
     get_nfl_receptions(wb)
     get_nfl_targets(wb)
     get_nfl_snaps(wb)
     get_nfl_rush_atts(wb)
+    # pull stats from footballoutsiders.com
     get_dvoa_rankings(wb)
+    get_oline_rankings(wb)
+    get_dline_rankings(wb)
     get_vegas_rg(wb)
 
     # color ranges
-    color_ranges(wb)
+    style_ranges(wb)
 
     # save workbook (.xlsx file)
+    wb.remove(ws1)  # remove blank worksheet
     wb.save(filename=dest_filename)
 
 
