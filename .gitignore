@@ -2,5 +2,6 @@
 *.xlsx
 *.json
 *.html
+*.csv
 
 pylava.ini

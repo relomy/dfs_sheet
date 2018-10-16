@@ -1,8 +1,11 @@
 import json
+import dirtyjson
+import re
 import requests
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, PatternFill, Border, Side, Font, colors
+from openpyxl.formatting.rule import ColorScaleRule
 # from openpyxl.cell import get_column_letter
 from os import path
 
@@ -312,6 +315,63 @@ def print_position_ws(wb, position, fields):
         wb[position].append(fields)
 
 
+def get_vegas_rg(wb):
+    ENDPOINT = 'https://rotogrinders.com/schedules/nfl'
+    filename = 'vegas_script.html'
+
+    # create worksheet
+    title = 'VEGAS'
+    header = ['Time', 'Team', 'Opponent', 'Line', 'MoneyLine', 'Over/Under', 'Projected Points', 'Projected Points Change']
+    create_sheet_header(wb, title, header)
+
+    soup = None
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
+
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
+
+        # dump html to file to avoid multiple requests
+        with open(filename, 'w') as outfile:
+            print(r.text, file=outfile)
+
+        soup = BeautifulSoup(r.text, 'html5lib')
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load html from file
+        with open(filename, 'r') as html_file:
+            soup = BeautifulSoup(html_file, 'html5lib')
+
+    # find script(s) in the html
+    script = soup.findAll('script')
+
+    js_vegas_data = script[11].string
+
+    # replace dumb names
+    js_vegas_data = js_vegas_data.replace('KCC', 'KC')
+    js_vegas_data = js_vegas_data.replace('JAC', 'JAX')
+
+    pattern = re.compile(r'data = (.*);')
+
+    json_str = pattern.search(js_vegas_data).group(1)
+    vegas_json = json.loads(json_str)
+    for matchup in vegas_json:
+        wb[title].append([
+            matchup['time']['display'],
+            matchup['team'],
+            matchup['opponent'],
+            matchup['line'],
+            matchup['moneyline'],
+            matchup['overunder'],
+            matchup['projected'],
+            matchup['projectedchange']['value']
+        ])
+
+
 def get_dvoa_rankings(wb):
     ENDPOINT = 'https://www.footballoutsiders.com/stats/teamdef'
     filename = 'html_defense.html'
@@ -446,17 +506,55 @@ def RB_tab(wb, values):
 
     keys = ['pos', 'name_id', 'name', 'id', 'roster_pos', 'salary', 'matchup', 'abbv', 'avg_ppg']
     stats_dict = dict(zip(keys, values))
-    # find opponent
-    home_at_away = stats_dict['matchup'].split(' ')[0]
     stats_dict['salary_perc'] = "{0:.1%}".format(float(stats_dict['salary']) / 50000)
-    print(stats_dict)
-    print(home_at_away)
 
-    exit()
+    # find opp, opp_excel, and game_time
+    home_at_away, game_time = stats_dict['matchup'].split(' ', 1)
+    stats_dict['game_time'] = game_time
+    home_team, away_team = home_at_away.split('@')
+    if stats_dict['abbv'] == home_team:
+        stats_dict['opp'] = away_team
+        stats_dict['opp_excel'] = "vs. {}".format(away_team)
+    else:
+        stats_dict['opp'] = home_team
+        stats_dict['opp_excel'] = "at {}".format(away_team)
+
+    append_row = wb[title].max_row + 1
+
+    # vegas formula OU
+    # =INDEX(Vegas!$G$2:$G$29,MATCH($E3 & "*",Vegas!$B$2:$B$29,0))
+    # insert rows of data
+    lame_list = [
+        stats_dict['pos'],
+        stats_dict['name'],
+        stats_dict['opp_excel'],
+        stats_dict['salary'],
+        stats_dict['salary_perc'],
+        stats_dict['abbv'],
+        '=INDEX(Vegas!$G$2:$G$29,MATCH($F{} & "*",Vegas!$B$2:$B$29,0))'.format(append_row),  # implied total
+        '=INDEX(Vegas!$F$2:$F$29,MATCH($F{} & "*",Vegas!$B$2:$B$29,0))'.format(append_row),  # over/under
+        '=INDEX(Vegas!$D$2:$D$29,MATCH($F{} & "*",Vegas!$B$2:$B$29,0))'.format(append_row)   # line
+    ]
+
+    for i, text in enumerate(lame_list, start=1):
+        wb[title].cell(row=append_row, column=i, value=text)
+
+
+def color_ranges(wb):
+    red = 'F8696B'
+    yellow = 'FFEB84'
+    green = '63BE7B'
+    for title in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        wb[title].conditional_formatting.add(
+            'G3:G95',
+            ColorScaleRule(start_type='min', start_color=red,
+                           mid_type='percentile', mid_value=50, mid_color=yellow,
+                           end_type='max', end_color=green)
+        )
 
 
 def main():
-    fn = 'DKSalaries.csv'
+    fn = 'DKSalaries_week7_full.csv'
     dest_filename = 'sheet.xlsx'
 
     # create workbook/worksheet
@@ -465,7 +563,7 @@ def main():
     ws1.title = 'DKSalaries'
 
     # guess types (numbers, floats, etc)
-    # wb.guess_types = True
+    wb.guess_types = True
 
     with open(fn, 'r') as f:
         # read entire file into memory
@@ -480,16 +578,14 @@ def main():
             fields = line.rstrip().split(',')
             if fields[0] == 'RB':
                 RB_tab(wb, fields)
+            elif fields[0] == 'WR':
+                WR_tab(wb, fields)
             else:
                 # % salary DK
                 salary_perc = "{0:.1%}".format(float(fields[5]) / 50000)
+                salary = "${0}".format(fields[5])
 
-                my_fields = [fields[0], fields[2], fields[5], salary_perc, fields[6], fields[7], fields[8]]
-
-                # if i == 0:
-                    # header - columns 0, 2, 5, 7, 8
-                    # position, name, salary, teamabbv, avgppg
-                    # ws2.append(header)
+                my_fields = [fields[0], fields[2], salary, salary_perc, fields[6], fields[7], fields[8]]
 
                 # print fields to position-named worksheet
                 print_position_ws(wb, fields[0], my_fields)
@@ -497,19 +593,16 @@ def main():
             # print fields to first worksheet
             ws1.append(line.rstrip().split(','))
 
-        # for i, line in enumerate(lines):
-        #     fields = line.rstrip().split(',')
-        #
-        # for line in f:
-        #     for field in line.split(','):
-        #         ws1.cell()
-
     # pull stats
     get_nfl_receptions(wb)
     get_nfl_targets(wb)
     get_nfl_snaps(wb)
     get_nfl_rush_atts(wb)
     get_dvoa_rankings(wb)
+    get_vegas_rg(wb)
+
+    # color ranges
+    color_ranges(wb)
 
     # save workbook (.xlsx file)
     wb.save(filename=dest_filename)
