@@ -275,10 +275,14 @@ def get_nfl_rush_atts(wb):
 
 def conv_weeks_to_padded_list(weeks):
     """Convert weeks dict or list to padded list (16 weeks)."""
+    all_weeks = []
     if isinstance(weeks, list):
-        pass
+        for week in weeks:
+            if week is None:
+                all_weeks.append('')
+            else:
+                all_weeks.append(week)
     elif isinstance(weeks, dict):
-        all_weeks = []
         for i in range(0, len(weeks)):
             # if weeks is None, put in blank string
             # 0 would mean they played but didn't get a snap
@@ -413,6 +417,44 @@ def get_dvoa_recv_rankings(wb, soup_table, title):
             wb[title].append(cols)
 
 
+def RB_tab(wb, values):
+    title = 'RB'
+
+    # create RB tab if it does not exist
+    # and set header(s)
+    if title not in wb.sheetnames:
+        wb.create_sheet(title=title)
+
+        # Starting with D1
+        # DK, DK%, blank, VEGASx3, MATCHUPx4, SEASON,x3, LAST WEEKx3, RANKINGSx2
+        # top header
+        wb[title]['D1'] = 'DK'
+        wb[title]['G1'] = 'VEGAS'
+        wb[title]['J1'] = 'MATCHUP'
+        wb[title]['N1'] = 'SEASON'
+        wb[title]['Q1'] = 'LAST WEEK'
+        wb[title]['T1'] = 'RANKINGS'
+
+        # second header
+        header_fields = [
+            'Position', 'Name', 'Opp', 'Salary', 'Salary%', 'Abbv',
+            'Implied Total', 'O/U', 'Line', 'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line',
+            'Snap%', 'Rush ATTs', 'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG'
+            'ECR'
+        ]
+        wb[title].append(header_fields)
+
+    keys = ['pos', 'name_id', 'name', 'id', 'roster_pos', 'salary', 'matchup', 'abbv', 'avg_ppg']
+    stats_dict = dict(zip(keys, values))
+    # find opponent
+    home_at_away = stats_dict['matchup'].split(' ')[0]
+    stats_dict['salary_perc'] = "{0:.1%}".format(float(stats_dict['salary']) / 50000)
+    print(stats_dict)
+    print(home_at_away)
+
+    exit()
+
+
 def main():
     fn = 'DKSalaries.csv'
     dest_filename = 'sheet.xlsx'
@@ -423,7 +465,7 @@ def main():
     ws1.title = 'DKSalaries'
 
     # guess types (numbers, floats, etc)
-    wb.guess_types = True
+    # wb.guess_types = True
 
     with open(fn, 'r') as f:
         # read entire file into memory
@@ -436,15 +478,21 @@ def main():
                 continue
 
             fields = line.rstrip().split(',')
-            my_fields = [fields[0], fields[2], fields[5], fields[7], fields[8]]
+            if fields[0] == 'RB':
+                RB_tab(wb, fields)
+            else:
+                # % salary DK
+                salary_perc = "{0:.1%}".format(float(fields[5]) / 50000)
 
-            # if i == 0:
-                # header - columns 0, 2, 5, 7, 8
-                # position, name, salary, teamabbv, avgppg
-                # ws2.append(header)
+                my_fields = [fields[0], fields[2], fields[5], salary_perc, fields[6], fields[7], fields[8]]
 
-            # print fields to position-named worksheet
-            print_position_ws(wb, fields[0], my_fields)
+                # if i == 0:
+                    # header - columns 0, 2, 5, 7, 8
+                    # position, name, salary, teamabbv, avgppg
+                    # ws2.append(header)
+
+                # print fields to position-named worksheet
+                print_position_ws(wb, fields[0], my_fields)
 
             # print fields to first worksheet
             ws1.append(line.rstrip().split(','))
