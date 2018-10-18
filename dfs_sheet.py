@@ -742,7 +742,7 @@ def position_tab(wb, values, title):
 
         # second header
         all_positions_header = [
-            'Position', 'Name', 'Opp', 'Salary', 'Salary%', 'Abbv',
+            'Position', 'Name', 'Abbv', 'Opp', 'Salary', 'Salary%',
             'Implied Total', 'O/U', 'Line'
         ]
 
@@ -752,7 +752,7 @@ def position_tab(wb, values, title):
         # more header fields based on position
         position_fields = []
         if title == 'QB':
-            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
             top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
             top_lvl_header(wb, title, 'MATCHUP', 'J', 2, 'FFED7D31')
             top_lvl_header(wb, title, 'PRESSURE', 'M', 1, 'FF5B9BD5')
@@ -770,7 +770,7 @@ def position_tab(wb, values, title):
             font = Font(b=True, color="FFFFFFFF")
 
             # top level header
-            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
             top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
             top_lvl_header(wb, title, 'MATCHUP', 'J', 3, 'FFED7D31')
             top_lvl_header(wb, title, 'SEASON', 'N', 2, 'FF5B9BD5')
@@ -785,7 +785,7 @@ def position_tab(wb, values, title):
             # Starting with D1
             # DK, DK%, blank, VEGASx3, MATCHUPx4, SEASON,x3, LAST WEEKx3, RANKINGSx2
             # top header
-            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
             top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
             top_lvl_header(wb, title, 'MATCHUP', 'J', 2, 'FFED7D31')
             top_lvl_header(wb, title, 'SEASON', 'M', 1, 'FF5B9BD5')
@@ -793,11 +793,11 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'RANKINGS', 'Q', 1, 'FF70AD47')
 
             position_fields = [
-                'DVOA', 'vs. WR1', 'vs. WR2', 'Snap%', 'Targets', 'Snap%', 'Targets',
+                'Pass DVOA', 'vs. WR1', 'vs. WR2', 'Snap%', 'Targets', 'Snap%', 'Targets',
                 'Average PPG', 'ECR', 'ECR Data'
             ]
         elif title == 'TE':
-            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
             top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
             top_lvl_header(wb, title, 'MATCHUP', 'J', 1, 'FFED7D31')
             top_lvl_header(wb, title, 'SEASON', 'L', 1, 'FF5B9BD5')
@@ -805,11 +805,11 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'RANKINGS', 'P', 1, 'FF70AD47')
 
             position_fields = [
-                'DVOA', 'vs. TE', 'Snap%', 'Targets', 'Snap%', 'Targets', 'Average PPG',
+                'Pass DVOA', 'vs. TE', 'Snap%', 'Targets', 'Snap%', 'Targets', 'Average PPG',
                 'ECR', 'ECR Data'
             ]
         elif title == 'DST':
-            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
             top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
             top_lvl_header(wb, title, 'RANKINGS', 'O', 1, 'FF70AD47')
 
@@ -866,12 +866,12 @@ def position_tab(wb, values, title):
         stats_dict['pos'],
         stats_dict['name'],
         stats_dict['opp_excel'],
+        stats_dict['abbv'],
         stats_dict['salary'],
         stats_dict['salary_perc'],
-        stats_dict['abbv'],
-        bld_excel_formula('VEGAS', '$G$2:$G$29', '$F', append_row, '$B$2:$B$29'),  # implied total
-        bld_excel_formula('VEGAS', '$F$2:$F$29', '$F', append_row, '$B$2:$B$29'),  # over/under
-        bld_excel_formula('VEGAS', '$D$2:$D$29', '$F', append_row, '$B$2:$B$29'),  # line
+        bld_excel_formula('VEGAS', '$G$2:$G$29', '$D', append_row, '$B$2:$B$29'),  # implied total
+        bld_excel_formula('VEGAS', '$F$2:$F$29', '$D', append_row, '$B$2:$B$29'),  # over/under
+        bld_excel_formula('VEGAS', '$D$2:$D$29', '$D', append_row, '$B$2:$B$29'),  # line
     ]
 
     # more header fields based on position
@@ -888,7 +888,7 @@ def position_tab(wb, values, title):
             # QBR
             bld_excel_formula('QB_STATS', '$J$2:$J$35', '$B', append_row, '$A$2:$A$35', qb_stats=True),
             # o-line
-            bld_excel_formula('OLINE', 'P$2:$P$35', '$F', append_row, '$B$2:$B$33'),
+            bld_excel_formula('OLINE', 'P$2:$P$35', '$D', append_row, '$B$2:$B$33'),
             # d-line
             bld_excel_formula('DLINE', 'P$2:$P$35', '$C', append_row, '$B$2:$B$33', right=True),
             # average PPG
@@ -915,7 +915,7 @@ def position_tab(wb, values, title):
             # pass dvoa (vs. RB)
             bld_excel_formula('TEAMDEF', 'T$37:$T$68', '$C', append_row, '$B$37:$B$68', right=True),
             # o line
-            bld_excel_formula('OLINE', '$C$2:$C$33', '$F', append_row, '$B$2:$B$33'),
+            bld_excel_formula('OLINE', '$C$2:$C$33', '$D', append_row, '$B$2:$B$33'),
             # d line
             bld_excel_formula('DLINE', '$C$2:$C$33', '$C', append_row, '$B$2:$B$33', right=True),
             # season snap%
@@ -994,7 +994,7 @@ def position_tab(wb, values, title):
             # ECR
             '=RANK(L{0}, $L$3:$L$52,1)'.format(append_row),
             # ECR Data
-            bld_excel_formula('DST_ECR', '$A$2:$A${}'.format(max_row), '$F', append_row, '$C$2:$C{}'.format(max_row), dst=True),
+            bld_excel_formula('DST_ECR', '$A$2:$A${}'.format(max_row), '$D', append_row, '$C$2:$C{}'.format(max_row), dst=True),
         ]
 
         # hide column l (ECR Data)
@@ -1008,15 +1008,15 @@ def position_tab(wb, values, title):
         nice.alignment = al
 
     # style column D (salary) with currency
-    for cell in wb[title]['D']:
+    for cell in wb[title]['E']:
         cell.number_format = '$#,##0_);($#,##0)'
 
     # style column E (salary %) with %/decimals
-    for cell in wb[title]['E']:
+    for cell in wb[title]['F']:
         cell.number_format = '##0.0%'
 
     # hide column F (abbv)
-    wb[title].column_dimensions['F'].hidden = True
+    wb[title].column_dimensions['D'].hidden = True
 
 
 def top_lvl_header(wb, title, text, start_col, length, color):
@@ -1057,6 +1057,29 @@ def bld_excel_formula(title, rtrn_range, match, row, match_range, week=False, ri
         formula = base_formula
 
     return "=" + formula
+
+
+def apply_border(wb):
+    border = Border(left=Side(border_style='thin', color='FF000000'),
+                    right=Side(border_style='thin', color='FF000000'))
+
+    for title in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        # select worksheet
+        ws = wb[title]
+        # find header columns (None = empty cell)
+        fields = []
+        for cell in ws[1]:
+            if cell.value is not None:
+                fields.append(cell.column)
+                # print("field: {} [{}] [idx: {}]".format(cell.value, cell.column, cell.col_idx))
+
+        # add max column (letter) to field
+        fields.append(get_column_letter(ws.max_column))
+
+        # skip first field
+        for i in range(1, len(fields)):
+            fmt_range = "{0}1:{1}{2}".format(fields[i - 1], chr(ord(fields[i]) - 1), ws.max_row)
+            style_range(ws, fmt_range, border=border)
 
 
 def style_ranges(wb):
@@ -1233,6 +1256,8 @@ def main():
 
     # color ranges
     style_ranges(wb)
+    apply_border(wb)
+
     # remove rows without ECR ranking (either out or useless)
     # remove_rows_without_ecr(wb)
 
