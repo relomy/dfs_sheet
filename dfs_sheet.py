@@ -298,6 +298,88 @@ def get_nfl_rush_atts(wb):
         wb[title].append(ls)
 
 
+def get_nfl_def_stats(wb):
+    # https://www.lineups.com/nfl/teams/stats/defense-stats
+    # get passing yds/att
+    # td / att (td %)
+    # att / completion (compl %)
+    """Retrieve receptions from lineups.com API."""
+    ENDPOINT = 'https://api.lineups.com/nfl/fetch/teams/stats/defense-stats/current'
+    fn = 'nfl_def_stats.json'
+    dir = 'sources'
+    filename = path.join(dir, fn)
+
+    # if file doesn't exist, let's pull it. otherwise - use the file.
+    data = pull_data(filename, ENDPOINT)
+
+    # we just want player data
+    player_data = data['data']
+
+    # create worksheet
+    title = 'DEF_STATS'
+    header = ['team abbv', 'team', 'pass_att', 'pass_yd_per_att', 'pass_compls', 'pass_yd_per_compl',
+              'pass_yds', 'pass_tds', 'pass_td_per_att', 'compl_perc']
+    create_sheet_header(wb, title, header)
+
+    team_map = {
+        'Atlanta Falcons': 'ATL',
+        'Indianapolis Colts': 'IND',
+        'San Francisco 49ers': 'SF',
+        'Oakland Raiders': 'OAK',
+        'Tampa Bay Buccaneers': 'TB',
+        'Kansas City Chiefs': 'KC',
+        'New York Giants': 'NYG',
+        'Cincinnati Bengals': 'CIN',
+        'Pittsburgh Steelers': 'PIT',
+        'Denver Broncos': 'DEN',
+        'Cleveland Browns': 'CLE',
+        'New England Patriots': 'NE',
+        'Minnesota Vikings': 'MIN',
+        'Miami Dolphins': 'MIA',
+        'Green Bay Packers': 'GB',
+        'Los Angeles Chargers': 'LAC',
+        'New Orleans Saints': 'NO',
+        'New York Jets': 'NYJ',
+        'Arizona Cardinals': 'ARI',
+        'Buffalo Bills': 'BUF',
+        'Houston Texans': 'HOU',
+        'Detroit Lions': 'DET',
+        'Jacksonville Jaguars': 'JAX',
+        'Los Angeles Rams': 'LAR',
+        'Seattle Seahawks': 'SEA',
+        'Philadelphia Eagles': 'PHI',
+        'Carolina Panthers': 'CAR',
+        'Tennessee Titans': 'TEN',
+        'Washington Redskins': 'WAS',
+        'Dallas Cowboys': 'DAL',
+        'Chicago Bears': 'CHI',
+        'Baltimore Ravens': 'BAL'
+    }
+
+    for d in player_data:
+        # TODO rushing_attempt_percentage_by_week
+        team = d['team']
+        team_abbv = team_map[team]
+        pass_att = d['passing_attempts']
+        pass_yd_per_att = d['passing_yards_per_attempt']
+        pass_compls = d['passing_completions']
+        pass_yd_per_compl = d['passing_yards_per_completion']
+        pass_yds = d['passing_yards']
+        pass_tds = d['passing_touchdowns']
+
+        # personal
+        pass_td_per_att = "{0:.4f}".format(pass_tds / pass_att)
+        compl_perc = "{0:.4f}".format(pass_compls / pass_att)
+
+        # remove '.' from name
+        # name = name.replace('.', '')
+
+        ls = [team_abbv, team, pass_att, pass_yd_per_att, pass_compls, pass_yd_per_compl,
+              pass_yds, pass_tds, compl_perc, pass_td_per_att]
+
+        wb[title].append(ls)
+
+
 def conv_weeks_to_padded_list(weeks):
     """Convert weeks dict or list to padded list (16 weeks)."""
     all_weeks = []
@@ -604,7 +686,7 @@ def get_dline_rankings(wb):
                 wb[title].append(cols)
 
 
-def get_qb_stats(wb):
+def get_qb_stats_FO(wb):
     ENDPOINT = 'https://www.footballoutsiders.com/stats/qb'
     fn = 'html_qb.html'
     dir = 'sources'
@@ -754,13 +836,15 @@ def position_tab(wb, values, title):
         if title == 'QB':
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
             top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
-            top_lvl_header(wb, title, 'MATCHUP', 'J', 2, 'FFED7D31')
-            top_lvl_header(wb, title, 'PRESSURE', 'M', 1, 'FF5B9BD5')
-            top_lvl_header(wb, title, 'RANKINGS', 'O', 1, 'FF70AD47')
+            top_lvl_header(wb, title, 'SEASON', 'J', 2, 'FF5B9BD5')
+            top_lvl_header(wb, title, 'PRESSURE', 'M', 1, 'FF00B0F0')
+            top_lvl_header(wb, title, 'MATCHUP', 'O', 2, 'FFED7D31')
+            top_lvl_header(wb, title, 'RANKINGS', 'R', 2, 'FF70AD47')
 
             position_fields = [
                 'Rushing Yards', 'DYAR', 'QBR', 'O-Line Sack%', 'D-Line Sack%',
-                'Average PPG', 'ECR', 'ECR Data'
+                'Def Y/A', 'Def Compl%', 'Def TD%',
+                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
             ]
         elif title == 'RB':
             # Starting with D1
@@ -775,11 +859,11 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'MATCHUP', 'J', 3, 'FFED7D31')
             top_lvl_header(wb, title, 'SEASON', 'N', 2, 'FF5B9BD5')
             top_lvl_header(wb, title, 'LAST WEEK', 'Q', 2, 'FF4472C4')
-            top_lvl_header(wb, title, 'RANKINGS', 'T', 1, 'FF70AD47')
+            top_lvl_header(wb, title, 'RANKINGS', 'T', 2, 'FF70AD47')
 
             position_fields = [
                 'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line', 'Snap%', 'Rush ATTs',
-                'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR', 'ECR Data'
+                'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
             ]
         elif title == 'WR':
             # Starting with D1
@@ -790,11 +874,11 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'MATCHUP', 'J', 2, 'FFED7D31')
             top_lvl_header(wb, title, 'SEASON', 'M', 1, 'FF5B9BD5')
             top_lvl_header(wb, title, 'LAST WEEK', 'O', 1, 'FF4472C4')
-            top_lvl_header(wb, title, 'RANKINGS', 'Q', 1, 'FF70AD47')
+            top_lvl_header(wb, title, 'RANKINGS', 'Q', 2, 'FF70AD47')
 
             position_fields = [
                 'Pass DVOA', 'vs. WR1', 'vs. WR2', 'Snap%', 'Targets', 'Snap%', 'Targets',
-                'Average PPG', 'ECR', 'ECR Data'
+                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
             ]
         elif title == 'TE':
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
@@ -802,19 +886,19 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'MATCHUP', 'J', 1, 'FFED7D31')
             top_lvl_header(wb, title, 'SEASON', 'L', 1, 'FF5B9BD5')
             top_lvl_header(wb, title, 'LAST WEEK', 'N', 1, 'FF4472C4')
-            top_lvl_header(wb, title, 'RANKINGS', 'P', 1, 'FF70AD47')
+            top_lvl_header(wb, title, 'RANKINGS', 'P', 2, 'FF70AD47')
 
             position_fields = [
                 'Pass DVOA', 'vs. TE', 'Snap%', 'Targets', 'Snap%', 'Targets', 'Average PPG',
-                'ECR', 'ECR Data'
+                'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
             ]
         elif title == 'DST':
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
             top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
-            top_lvl_header(wb, title, 'RANKINGS', 'O', 1, 'FF70AD47')
+            top_lvl_header(wb, title, 'RANKINGS', 'J', 2, 'FF70AD47')
 
             position_fields = [
-                'Average PPG', 'ECR'
+                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
             ]
 
         # find max row to append
@@ -891,22 +975,34 @@ def position_tab(wb, values, title):
             bld_excel_formula('OLINE', 'P$2:$P$35', '$D', append_row, '$B$2:$B$33'),
             # d-line
             bld_excel_formula('DLINE', 'P$2:$P$35', '$C', append_row, '$B$2:$B$33', right=True),
+            # matchup passing_yards_per_attempt
+            bld_excel_formula('DEF_STATS', 'D$2:$D${0}'.format(max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
+            # matchup compl %
+            bld_excel_formula('DEF_STATS', 'I$2:$I${0}'.format(max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
+            # matchup td %
+            bld_excel_formula('DEF_STATS', 'J$2:$J${0}'.format(max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
             # average PPG
             stats_dict['avg_ppg'],
-            # =OFFSET(INDIRECT(ADDRESS(ROW(), COLUMN())),0,1) # cell to the right
             # ECR
-            '=RANK(Q{0}, $Q$3:$Q$53,1)'.format(append_row),
+            '=RANK(U{0}, $U$3:$U${1},1)'.format(append_row, max_row),
+            # + / - salary
+            '=V{0} - S{0}'.format(append_row),
             # ECR DATA
             bld_excel_formula('QB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+            # salary rank (low to high)
+            '=RANK(E{0}, $E$3:$E${1},0)'.format(append_row, max_row),
         ]
         # style column L & M (pressure %) with %/decimals
         for cell in wb[title]['M']:
             cell.number_format = '##0.0%'
         for cell in wb[title]['N']:
             cell.number_format = '##0.0%'
+        # style column L & M (matchup %) with %/decimals
+        for cell in wb[title]['P']:
+            cell.number_format = '##0.0%'
+        for cell in wb[title]['Q']:
+            cell.number_format = '##0.0%'
 
-        # hide column Q (ECR Data)
-        wb[title].column_dimensions['Q'].hidden = True
     elif title == 'RB':
         max_row = wb[title + '_ECR'].max_row
         positional_fields = [
@@ -934,11 +1030,11 @@ def position_tab(wb, values, title):
             stats_dict['avg_ppg'],
             # ECR
             '=RANK(V{0}, $V$3:$V$69,1)'.format(append_row),
+            # +/- rank
+            'x',
             # ECR Data
             bld_excel_formula('RB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
         ]
-        # hide column V (ECR Data)
-        wb[title].column_dimensions['V'].hidden = True
     elif title == 'WR':
         positional_fields = [
             # pass dvoa
@@ -959,11 +1055,11 @@ def position_tab(wb, values, title):
             stats_dict['avg_ppg'],
             # ECR
             '=RANK(S{0}, $S$3:$S$94,1)'.format(append_row),
+            # +/- rank
+            'x',
             # ECR Data
             bld_excel_formula('WR_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
         ]
-        # hide column S (ECR Data)
-        wb[title].column_dimensions['S'].hidden = True
     elif title == 'TE':
         positional_fields = [
             # pass dvoa
@@ -982,23 +1078,23 @@ def position_tab(wb, values, title):
             stats_dict['avg_ppg'],
             # ECR
             '=RANK(R{0}, $R$3:$R$52,1)'.format(append_row),
+            # +/- rank
+            'x',
             # ECR Data
             bld_excel_formula('TE_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
         ]
-        # hide column r (ECR Data)
-        wb[title].column_dimensions['R'].hidden = True
     elif title == 'DST':
         positional_fields = [
             # average PPG
             stats_dict['avg_ppg'],
             # ECR
             '=RANK(L{0}, $L$3:$L$52,1)'.format(append_row),
+            # +/- rank
+            'x',
             # ECR Data
             bld_excel_formula('DST_ECR', '$A$2:$A${}'.format(max_row), '$D', append_row, '$C$2:$C{}'.format(max_row), dst=True),
         ]
 
-        # hide column l (ECR Data)
-        wb[title].column_dimensions['L'].hidden = True
     row = all_positions_fields + positional_fields
 
     # center all cells horzitontally/vertically in row
@@ -1087,6 +1183,7 @@ def style_ranges(wb):
     red = 'F8696B'
     yellow = 'FFEB84'
     green = '63BE7B'
+    white = 'FFFFFF'
 
     for title in ['QB', 'RB', 'WR', 'TE', 'DST']:
         ws = wb[title]
@@ -1100,7 +1197,7 @@ def style_ranges(wb):
         green_to_red_headers = [
             'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
             'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'vs. TE', 'D-Line Sack%', 'Average PPG',
-            'Rushing Yards', 'DYAR', 'QBR'
+            'Rushing Yards', 'DYAR', 'QBR', 'Def Y/A', 'Def Compl%', 'Def TD%'
         ]
         green_to_red_rule = ColorScaleRule(start_type='min', start_color=red,
                                            mid_type='percentile', mid_value=50, mid_color=yellow,
@@ -1112,6 +1209,12 @@ def style_ranges(wb):
         red_to_green_rule = ColorScaleRule(start_type='min', start_color=green,
                                            mid_type='percentile', mid_value=50, mid_color=yellow,
                                            end_type='max', end_color=red)
+        white_middle_headers = [
+            '+/- Rank'
+        ]
+        white_middle_rule = ColorScaleRule(start_type='min', start_color=red,
+                                           mid_type='percentile', mid_value=50, mid_color=white,
+                                           end_type='max', end_color=green)
         # color ranges
         for i in range(1, ws.max_column + 1):
             if ws.cell(row=2, column=i).value in green_to_red_headers:
@@ -1126,9 +1229,15 @@ def style_ranges(wb):
                 cell_rng = "{0}{1}:{2}".format(column_letter, '3', ws.max_row)
                 # print("[{}] Coloring {} [{} - {}] red_to_green".format(title, ws.cell(row=2, column=i).value, ws.cell(row=2, column=i), cell_rng))
                 wb[title].conditional_formatting.add(cell_rng, red_to_green_rule)
+            elif ws.cell(row=2, column=i).value in white_middle_headers:
+                column_letter = get_column_letter(i)
+                # color range (red to green)
+                cell_rng = "{0}{1}:{2}".format(column_letter, '3', ws.max_row)
+                # print("[{}] Coloring {} [{} - {}] red_to_green".format(title, ws.cell(row=2, column=i).value, ws.cell(row=2, column=i), cell_rng))
+                wb[title].conditional_formatting.add(cell_rng, white_middle_rule)
 
         # set column widths
-        column_widths = [8, 20, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8]
+        column_widths = [8, 20, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]
         for i, column_width in enumerate(column_widths):
             ws.column_dimensions[get_column_letter(i + 1)].width = column_width
 
@@ -1190,6 +1299,67 @@ def check_name_in_ecr(wb, position, name):
     return bool_found_player_in_ecr_tab(ecr_ws[search_col], name)
 
 
+def insert_ranks(wb):
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[position]
+
+        ecr_col = ''
+        ecr_data_col = ''
+        salary_col = 'E'  # salary coloumn is always E (right now)
+        salary_rank_col = ''
+        plus_minus_col = ''
+        max_row = ws.max_row
+
+        # look through header row and pull header columns
+        for col in ws[2]:
+            if col.value == 'ECR':
+                ecr_col = col.column
+            elif col.value == 'ECR Data':
+                ecr_data_col = col.column
+            elif col.value == 'Salary Rank':
+                salary_rank_col = col.column
+            elif col.value == '+/- Rank':
+                plus_minus_col = col.column
+
+        # ECR rank
+        for cell in ws[ecr_col]:
+            # skip header rows
+            if cell.row <= 2:
+                continue
+            cell.value = '=RANK(${0}{1}, ${0}3:${0}{2},1)'.format(
+                ecr_data_col, cell.row, max_row)
+
+        # salary rank
+        for cell in ws[salary_rank_col]:
+            # skip header rows
+            if cell.row <= 2:
+                continue
+            cell.value = '=RANK(${0}{1}, ${0}3:${0}{2},0)'.format(
+                salary_col, cell.row, max_row)
+
+        # +/- rank
+        for cell in ws[plus_minus_col]:
+            # skip header rows
+            if cell.row <= 2:
+                continue
+            cell.value = '={0}{1} - {2}{1}'.format(
+                salary_rank_col, cell.row, ecr_col)
+            print("doing {}".format(cell.value))
+        # ECR
+
+        # + / - salary
+        # '=V{0} - S{0}'.format(append_row),
+        # ECR DATA
+        # bld_excel_formula('QB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+        # salary rank (low to high)
+        # '=RANK(E{0}, $E$3:$E${1},0)'.format(append_row, max_row),
+        print("ecr_col: {} ecr_data_col: {} salary_col: {} plus_minus_col: {}".format(ecr_col, ecr_data_col, salary_col, plus_minus_col))
+
+        # hide data columns
+        ws.column_dimensions[ecr_data_col].hidden = True
+        ws.column_dimensions[salary_rank_col].hidden = True
+
+
 def main():
     fn = 'DKSalaries_week7_full.csv'
     dest_filename = 'sheet.xlsx'
@@ -1246,17 +1416,21 @@ def main():
     get_nfl_targets(wb)
     get_nfl_snaps(wb)
     get_nfl_rush_atts(wb)
+    get_nfl_def_stats(wb)
     # pull stats from footballoutsiders.com
     get_dvoa_rankings(wb)
     get_oline_rankings(wb)
     get_dline_rankings(wb)
-    get_qb_stats(wb)
+    get_qb_stats_FO(wb)
     # pull vegas stats from rotogrinders.com
     get_vegas_rg(wb)
 
     # color ranges
     style_ranges(wb)
     apply_border(wb)
+
+    # test
+    insert_ranks(wb)
 
     # remove rows without ECR ranking (either out or useless)
     # remove_rows_without_ecr(wb)
@@ -1271,6 +1445,12 @@ def main():
 
     # remove rows without an ECR ranking (likely out or useless))
     # wb_data_only = load_workbook(dest_filename, data_only=True)
+
+    # TODO ryne hangouts
+    # 1 Add a column for Salary rank vs weekly ranking to show best value plays (example + -, x player ranks 7 but is the 15th most expensive, -8)
+    # 2 add Defensive Rank vs QB
+    # 3 is it possible to bring in RG rankings? (not a big deal)
+    # 4 On the Def tab, I think the implied total should be of the team the defense is against, not their own implied total
 
 
 if __name__ == "__main__":
