@@ -1149,14 +1149,11 @@ def bool_found_player_in_ecr_tab(ws_column, name):
 
 
 def order_sheets(wb):
-    # QB, RB, WR, TE, DST first
+    # pull indices from QB, RB, WR, TE, DST to be ordered first
     order = [wb.worksheets.index(wb[i]) for i in ['QB', 'RB', 'WR', 'TE', 'DST']]
-    # order = [wb.worksheets.index(wb['QB']),
-    #          wb.worksheets.index(wb['RB']),
-    #          wb.worksheets.index(wb['WR']),
-    #          wb.worksheets.index(wb['TE']),
-    #          wb.worksheets.index(wb['DST'])]
 
+    # create set from 0 to len(wb._sheets)
+    # subtract unique values from set and extend list to fill in missing values
     order.extend(list(set(range(len(wb._sheets))) - set(order)))
     wb._sheets = [wb._sheets[i] for i in order]
 
@@ -1187,12 +1184,9 @@ def main():
     if not path.exists(directory):
         makedirs(directory)
 
-    # pull stats from fantasypros.com
-    fpros_ecr(wb, 'QB')
-    fpros_ecr(wb, 'RB')
-    fpros_ecr(wb, 'WR')
-    fpros_ecr(wb, 'TE')
-    fpros_ecr(wb, 'DST')
+    # pull positional stats from fantasypros.com
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        fpros_ecr(wb, position)
 
     with open(fn, 'r') as f:
         # read entire file into memory
