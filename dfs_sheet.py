@@ -1,5 +1,6 @@
+"""Create DFS spreadsheet from stats """
+
 import json
-import dirtyjson
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -8,7 +9,7 @@ from openpyxl.styles import Alignment, PatternFill, Border, Side, Font, colors
 from openpyxl.formatting.rule import ColorScaleRule
 from openpyxl.utils import get_column_letter
 # from openpyxl.cell import get_column_letter
-from os import path
+from os import path, makedirs
 
 
 def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment=None):
@@ -103,7 +104,9 @@ def pull_data(filename, ENDPOINT):
 def get_nfl_snaps(wb):
     """Retrieve snaps from lineups.com API."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/snaps/2018/OFF'
-    filename = 'nfl_snaps.json'
+    fn = 'nfl_snaps.json'
+    dir = 'sources'
+    filename = path.join(dir, fn)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
     data = pull_data(filename, ENDPOINT)
@@ -115,7 +118,7 @@ def get_nfl_snaps(wb):
 
     # create worksheet
     title = 'SNAPS'
-    header = ['name', 'position', 'team', 'season average' 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
+    header = ['name', 'position', 'team', 'season average', 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
               'week7', 'week8', 'week9', 'week10', 'week11', 'week12', 'week13', 'week14',
               'week15', 'week16']
     create_sheet_header(wb, title, header)
@@ -131,6 +134,9 @@ def get_nfl_snaps(wb):
         if position not in ['RB', 'TE', 'WR']:
             continue
 
+        # remove '.' from name
+        name = name.replace('.', '')
+
         # convert weeks dict to list
         all_weeks = conv_weeks_to_padded_list(weeks)
 
@@ -145,7 +151,9 @@ def get_nfl_snaps(wb):
 def get_nfl_targets(wb):
     """Retrieve targets from lineups.com API."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/targets/2018/OFF'
-    filename = 'nfl_targets.json'
+    fn = 'nfl_targets.json'
+    dir = 'sources'
+    filename = path.join(dir, fn)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
     data = pull_data(filename, ENDPOINT)
@@ -175,6 +183,9 @@ def get_nfl_targets(wb):
         if position not in ['RB', 'TE', 'WR']:
             continue
 
+        # remove '.' from name
+        name = name.replace('.', '')
+
         # convert weeks dict to list
         all_weeks = conv_weeks_to_padded_list(weeks)
 
@@ -195,7 +206,9 @@ def get_nfl_targets(wb):
 def get_nfl_receptions(wb):
     """Retrieve receptions from lineups.com API."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/receptions/2018/OFF'
-    filename = 'nfl_receptions.json'
+    fn = 'nfl_receptions.json'
+    dir = 'sources'
+    filename = path.join(dir, fn)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
     data = pull_data(filename, ENDPOINT)
@@ -205,9 +218,9 @@ def get_nfl_receptions(wb):
 
     # create worksheet
     title = 'RECEPTIONS'
-    header = ['name', 'position', 'team', 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
+    header = ['name', 'position', 'team', 'season average', 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
               'week7', 'week8', 'week9', 'week10', 'week11', 'week12', 'week13', 'week14',
-              'week15', 'week16', 'receptions', 'average', 'touchdowns']
+              'week15', 'week16', 'receptions', 'touchdowns']
     create_sheet_header(wb, title, header)
 
     for d in player_data:
@@ -223,6 +236,9 @@ def get_nfl_receptions(wb):
         if position not in ['RB', 'TE', 'WR']:
             continue
 
+        # remove '.' from name
+        name = name.replace('.', '')
+
         # convert weeks dict to list
         all_weeks = conv_weeks_to_padded_list(weeks)
 
@@ -237,7 +253,9 @@ def get_nfl_receptions(wb):
 def get_nfl_rush_atts(wb):
     """Retrieve receptions from lineups.com API."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/rush/2018/OFF'
-    filename = 'nfl_rush_atts.json'
+    fn = 'nfl_rush_atts.json'
+    dir = 'sources'
+    filename = path.join(dir, fn)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
     data = pull_data(filename, ENDPOINT)
@@ -262,9 +280,12 @@ def get_nfl_rush_atts(wb):
         season_average = d['average']
         touchdowns = d['touchdowns']
 
-        # we only care about QB/RB/TE/WR
-        if position not in ['QB', 'RB', 'TE', 'WR']:
+        # we only care about QB/RB/WR
+        if position not in ['QB', 'RB', 'WR']:
             continue
+
+        # remove '.' from name
+        name = name.replace('.', '')
 
         # convert weeks dict to list
         all_weeks = conv_weeks_to_padded_list(weeks)
@@ -295,30 +316,21 @@ def conv_weeks_to_padded_list(weeks):
             else:
                 all_weeks.append(weeks[str(i + 1)])
 
-        # pad weeks to 16 (a = [])
-        # more visual/pythonic
-        # a = (a + N * [''])[:N]
-        N = 16
-        all_weeks = (all_weeks + N * [''])[:N]
+    # pad weeks to 16 (a = [])
+    # more visual/pythonic
+    # a = (a + N * [''])[:N]
+    N = 16
+    all_weeks = (all_weeks + N * [''])[:N]
 
     return all_weeks
 
 
-def print_position_ws(wb, position, fields):
-    if position in wb.sheetnames:
-        wb[position].append(fields)
-        # wsx = wb.create_sheet(title=position)
-    else:
-        # if wb[position] does not exist, create it and print header
-        wb.create_sheet(title=position)
-        header = ['Position', 'Name', 'Salary', 'TeamAbbrev', 'AvgPointsPerGame']
-        wb[position].append(header)
-        wb[position].append(fields)
-
-
 def get_vegas_rg(wb):
     ENDPOINT = 'https://rotogrinders.com/schedules/nfl'
-    filename = 'vegas_script.html'
+
+    fn = 'vegas_script.html'
+    dir = 'sources'
+    filename = path.join(dir, fn)
 
     # create worksheet
     title = 'VEGAS'
@@ -375,7 +387,9 @@ def get_vegas_rg(wb):
 
 def get_dvoa_rankings(wb):
     ENDPOINT = 'https://www.footballoutsiders.com/stats/teamdef'
-    filename = 'html_defense.html'
+    fn = 'html_defense.html'
+    dir = 'sources'
+    filename = path.join(dir, fn)
 
     soup = None
     if not path.isfile(filename):
@@ -480,7 +494,9 @@ def get_dvoa_recv_rankings(wb, soup_table, title):
 
 def get_oline_rankings(wb):
     ENDPOINT = 'https://www.footballoutsiders.com/stats/ol'
-    filename = 'html_oline.html'
+    fn = 'html_oline.html'
+    dir = 'sources'
+    filename = path.join(dir, fn)
 
     soup = None
     if not path.isfile(filename):
@@ -534,7 +550,9 @@ def get_oline_rankings(wb):
 
 def get_dline_rankings(wb):
     ENDPOINT = 'https://www.footballoutsiders.com/stats/dl'
-    filename = 'html_dline.html'
+    fn = 'html_dline.html'
+    dir = 'sources'
+    filename = path.join(dir, fn)
 
     soup = None
     if not path.isfile(filename):
@@ -586,6 +604,133 @@ def get_dline_rankings(wb):
                 wb[title].append(cols)
 
 
+def get_qb_stats(wb):
+    ENDPOINT = 'https://www.footballoutsiders.com/stats/qb'
+    fn = 'html_qb.html'
+    dir = 'sources'
+    filename = path.join(dir, fn)
+
+    soup = None
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
+
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
+
+        # dump html to file to avoid multiple requests
+        with open(filename, 'w') as outfile:
+            print(r.text, file=outfile)
+
+        soup = BeautifulSoup(r.text, 'html5lib')
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load html from file
+        with open(filename, 'r') as html_file:
+            soup = BeautifulSoup(html_file, 'html5lib')
+
+    # find all tables (3) in the html
+    table = soup.findAll('table')
+
+    if table:
+        # create worksheet
+        title = 'QB_STATS'
+        wb.create_sheet(title=title)
+
+        for t in table:
+            qb_stats = t
+
+            # find header
+            table_header = qb_stats.find('thead')
+            # there is one header row
+            header_row = table_header.find('tr')
+            # loop through header columns and append to worksheet
+            header_cols = header_row.find_all('th')
+            header = [ele.text.strip() for ele in header_cols]
+            wb[title].append(header)
+
+            # find the rest of the table header_rows
+            rows = qb_stats.find_all('tr')
+            for row in rows:
+                cols = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols]
+                if cols:
+                    wb[title].append(cols)
+
+
+def fpros_ecr(wb, position):
+    if position == 'QB' or position == 'DST':
+        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/{}.php'.format(position.lower())
+    else:
+        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/ppr-{}.php'.format(position.lower())
+
+    fn = 'ecr_{}.html'.format(position)
+    dir = 'sources'
+    filename = path.join(dir, fn)
+
+    soup = None
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
+
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
+
+        # dump html to file to avoid multiple requests
+        with open(filename, 'w') as outfile:
+            print(r.text, file=outfile)
+
+        soup = BeautifulSoup(r.text, 'html5lib')
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load html from file
+        with open(filename, 'r') as html_file:
+            soup = BeautifulSoup(html_file, 'html5lib')
+
+    # find all tables (2) in the html
+    table = soup.find('table', id='rank-data')
+
+    if table:
+        # create worksheet
+        title = '{0}_ECR'.format(position)
+        wb.create_sheet(title=title)
+
+        # # find header
+        table_header = table.find('thead')
+        # there is one header row
+        header_row = table_header.find('tr')
+        # loop through header columns and append to worksheet
+        header_cols = header_row.find_all('th')
+        header = [ele.text.strip() for ele in header_cols]
+        wb[title].append(header)
+
+        # find the rest of the table header_rows
+        rows = table.find_all('tr')
+        for row in rows:
+            cols = row.find_all('td')
+            # cols = [ele.text.strip() for ele in cols]
+            # change from list comp for just fpros
+            new_cols = []
+            for ele in cols:
+                txt = ele.text.strip()
+                # replace JAX
+                txt = txt.replace('JAC', 'JAX')
+                # remove periods (T.J. Yeldon, T.Y. Hilton)
+                txt = txt.replace('.', '')
+                # really? just to fix mitchell?
+                if position == 'QB':
+                    txt = txt.replace('Mitch', 'Mitchell')
+                new_cols.append(txt)
+            if cols:
+                wb[title].append(new_cols)
+
+
 def position_tab(wb, values, title):
     # create positional tab if it does not exist
     # and set header(s)
@@ -606,9 +751,18 @@ def position_tab(wb, values, title):
 
         # more header fields based on position
         position_fields = []
-        if title == 'RB':
+        if title == 'QB':
+            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
+            top_lvl_header(wb, title, 'MATCHUP', 'J', 2, 'FFED7D31')
+            top_lvl_header(wb, title, 'PRESSURE', 'M', 1, 'FF5B9BD5')
+            top_lvl_header(wb, title, 'RANKINGS', 'O', 1, 'FF70AD47')
 
-
+            position_fields = [
+                'Rushing Yards', 'DYAR', 'QBR', 'O-Line Sack%', 'D-Line Sack%',
+                'Average PPG', 'ECR', 'ECR Data'
+            ]
+        elif title == 'RB':
             # Starting with D1
             # DK, DK%, blank, VEGASx3, MATCHUPx4, SEASON,x3, LAST WEEKx3, RANKINGSx2
             # top header
@@ -616,49 +770,56 @@ def position_tab(wb, values, title):
             font = Font(b=True, color="FFFFFFFF")
 
             # top level header
-            wb[title]['D1'] = 'DK'
-            style_range(wb[title], 'D1:F1', font=font, fill=PatternFill(patternType="solid", fgColor="FF000000"), alignment=al)
-            wb[title]['G1'] = 'VEGAS'
-            style_range(wb[title], 'G1:I1', font=font, fill=PatternFill(patternType="solid", fgColor="FFFFC000"), alignment=al)
-            wb[title]['J1'] = 'MATCHUP'
-            style_range(wb[title], 'J1:M1', font=font, fill=PatternFill(patternType="solid", fgColor="FFED7D31"), alignment=al)
-            wb[title]['N1'] = 'SEASON'
-            style_range(wb[title], 'N1:P1', font=font, fill=PatternFill(patternType="solid", fgColor="FF5B9BD5"), alignment=al)
-            wb[title]['Q1'] = 'LAST WEEK'
-            style_range(wb[title], 'Q1:S1', font=font, fill=PatternFill(patternType="solid", fgColor="FF4472C4"), alignment=al)
-            wb[title]['T1'] = 'RANKINGS'
-            style_range(wb[title], 'T1:U1', font=font, fill=PatternFill(patternType="solid", fgColor="FF70AD47"), alignment=al)
+            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
+            top_lvl_header(wb, title, 'MATCHUP', 'J', 3, 'FFED7D31')
+            top_lvl_header(wb, title, 'SEASON', 'N', 2, 'FF5B9BD5')
+            top_lvl_header(wb, title, 'LAST WEEK', 'Q', 2, 'FF4472C4')
+            top_lvl_header(wb, title, 'RANKINGS', 'T', 1, 'FF70AD47')
 
             position_fields = [
                 'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line', 'Snap%', 'Rush ATTs',
-                'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR'
+                'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR', 'ECR Data'
             ]
         elif title == 'WR':
-            # set row height
-            wb[title].row_dimensions[2].height = 40
             # Starting with D1
             # DK, DK%, blank, VEGASx3, MATCHUPx4, SEASON,x3, LAST WEEKx3, RANKINGSx2
             # top header
-            wb[title]['D1'] = 'DK'
-            style_range(wb[title], 'D1:F1', alignment=al)
-            wb[title]['G1'] = 'VEGAS'
-            style_range(wb[title], 'G1:I1', alignment=al)
-            wb[title]['J1'] = 'MATCHUP'
-            style_range(wb[title], 'J1:L1', alignment=al)
-            wb[title]['M1'] = 'SEASON'
-            style_range(wb[title], 'M1:N1', alignment=al)
-            wb[title]['O1'] = 'LAST WEEK'
-            style_range(wb[title], 'O1:P1', alignment=al)
-            wb[title]['Q1'] = 'RANKINGS'
-            style_range(wb[title], 'Q1:R1', alignment=al)
+            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
+            top_lvl_header(wb, title, 'MATCHUP', 'J', 2, 'FFED7D31')
+            top_lvl_header(wb, title, 'SEASON', 'M', 1, 'FF5B9BD5')
+            top_lvl_header(wb, title, 'LAST WEEK', 'O', 1, 'FF4472C4')
+            top_lvl_header(wb, title, 'RANKINGS', 'Q', 1, 'FF70AD47')
 
             position_fields = [
-                'DVOA', 'WR1', 'WR2', 'Snap%', 'Targets', 'Snap%', 'Targets', 'Average PPG', 'ECR'
+                'DVOA', 'vs. WR1', 'vs. WR2', 'Snap%', 'Targets', 'Snap%', 'Targets',
+                'Average PPG', 'ECR', 'ECR Data'
+            ]
+        elif title == 'TE':
+            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
+            top_lvl_header(wb, title, 'MATCHUP', 'J', 1, 'FFED7D31')
+            top_lvl_header(wb, title, 'SEASON', 'L', 1, 'FF5B9BD5')
+            top_lvl_header(wb, title, 'LAST WEEK', 'N', 1, 'FF4472C4')
+            top_lvl_header(wb, title, 'RANKINGS', 'P', 1, 'FF70AD47')
+
+            position_fields = [
+                'DVOA', 'vs. TE', 'Snap%', 'Targets', 'Snap%', 'Targets', 'Average PPG',
+                'ECR', 'ECR Data'
+            ]
+        elif title == 'DST':
+            top_lvl_header(wb, title, 'DK', 'D', 1, 'FF000000')
+            top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
+            top_lvl_header(wb, title, 'RANKINGS', 'O', 1, 'FF70AD47')
+
+            position_fields = [
+                'Average PPG', 'ECR'
             ]
 
-        header = all_positions_header + position_fields
-
+        # find max row to append
         append_row = wb[title].max_row + 1
+        header = all_positions_header + position_fields
 
         # change row font and alignment
         font = Font(b=True, color="FF000000")
@@ -673,12 +834,17 @@ def position_tab(wb, values, title):
         for i, field in enumerate(header):
             wb[title].cell(row=append_row, column=i + 1, value=field)
 
+        # freeze header
+        wb[title].freeze_panes = "O3"
+
     keys = ['pos', 'name_id', 'name', 'id', 'roster_pos', 'salary', 'matchup', 'abbv', 'avg_ppg']
     stats_dict = dict(zip(keys, values))
     stats_dict['salary_perc'] = "{0:.1%}".format(float(stats_dict['salary']) / 50000)
 
-    # 'fix' name to remove extra stuff like Jr or III
+    # 'fix' name to remove extra stuff like Jr or III (Todd Gurley II for example)
     name = ' '.join(stats_dict['name'].split(' ')[:2])
+    # also remove periods (T.J. Yeldon for example)
+    name = name.replace('.', '')
     stats_dict['name'] = name
 
     # find opp, opp_excel, and game_time
@@ -692,10 +858,9 @@ def position_tab(wb, values, title):
         stats_dict['opp'] = home_team
         stats_dict['opp_excel'] = "at {}".format(home_team)
 
+    # find max row to append
     append_row = wb[title].max_row + 1
 
-    # vegas formula OU
-    # =INDEX(Vegas!$G$2:$G$29,MATCH($E3 & "*",Vegas!$B$2:$B$29,0))
     # insert rows of data
     all_positions_fields = [
         stats_dict['pos'],
@@ -704,40 +869,139 @@ def position_tab(wb, values, title):
         stats_dict['salary'],
         stats_dict['salary_perc'],
         stats_dict['abbv'],
-        '=INDEX(Vegas!$G$2:$G$29,MATCH($F{} & "*",Vegas!$B$2:$B$29,0))'.format(append_row),  # implied total
-        '=INDEX(Vegas!$F$2:$F$29,MATCH($F{} & "*",Vegas!$B$2:$B$29,0))'.format(append_row),  # over/under
-        '=INDEX(Vegas!$D$2:$D$29,MATCH($F{} & "*",Vegas!$B$2:$B$29,0))'.format(append_row)   # line
+        bld_excel_formula('VEGAS', '$G$2:$G$29', '$F', append_row, '$B$2:$B$29'),  # implied total
+        bld_excel_formula('VEGAS', '$F$2:$F$29', '$F', append_row, '$B$2:$B$29'),  # over/under
+        bld_excel_formula('VEGAS', '$D$2:$D$29', '$F', append_row, '$B$2:$B$29'),  # line
     ]
 
     # more header fields based on position
     positional_fields = []
-    if title == 'RB':
+
+    # get max_row from position ECR tab
+    max_row = wb[title + '_ECR'].max_row
+    if title == 'QB':
+        positional_fields = [
+            # rushing yards
+            bld_excel_formula('QB_STATS', '$K$44:$K$82', '$B', append_row, '$A$44:$A$82', qb_stats=True),
+            # DYAR
+            bld_excel_formula('QB_STATS', '$C$2:$C$42', '$B', append_row, '$A$2:$A$42', qb_stats=True),
+            # QBR
+            bld_excel_formula('QB_STATS', '$J$2:$J$35', '$B', append_row, '$A$2:$A$35', qb_stats=True),
+            # o-line
+            bld_excel_formula('OLINE', 'P$2:$P$35', '$F', append_row, '$B$2:$B$33'),
+            # d-line
+            bld_excel_formula('DLINE', 'P$2:$P$35', '$C', append_row, '$B$2:$B$33', right=True),
+            # average PPG
+            stats_dict['avg_ppg'],
+            # =OFFSET(INDIRECT(ADDRESS(ROW(), COLUMN())),0,1) # cell to the right
+            # ECR
+            '=RANK(Q{0}, $Q$3:$Q$53,1)'.format(append_row),
+            # ECR DATA
+            bld_excel_formula('QB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+        ]
+        # style column L & M (pressure %) with %/decimals
+        for cell in wb[title]['M']:
+            cell.number_format = '##0.0%'
+        for cell in wb[title]['N']:
+            cell.number_format = '##0.0%'
+
+        # hide column Q (ECR Data)
+        wb[title].column_dimensions['Q'].hidden = True
+    elif title == 'RB':
+        max_row = wb[title + '_ECR'].max_row
         positional_fields = [
             # run dvoa
-            '=INDEX(TEAMDEF!$J$2:$J$34,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$2:$B$34,0))'.format(append_row),
+            bld_excel_formula('TEAMDEF', 'J$2:$J$33', '$C', append_row, '$B$2:$B$33', right=True),
             # pass dvoa (vs. RB)
-            '=INDEX(TEAMDEF!$T$37:$T$68,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$37:$B$68,0))'.format(append_row),
+            bld_excel_formula('TEAMDEF', 'T$37:$T$68', '$C', append_row, '$B$37:$B$68', right=True),
             # o line
-            '=INDEX(OLINE!$C$2:$C$33,MATCH($F{0},OLINE!$B$2:$B$33,0))'.format(append_row),
+            bld_excel_formula('OLINE', '$C$2:$C$33', '$F', append_row, '$B$2:$B$33'),
             # d line
-            '=INDEX(DLINE!$C$2:$C$33,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),DLINE!$B$2:$B$33,0))'.format(append_row),
+            bld_excel_formula('DLINE', '$C$2:$C$33', '$C', append_row, '$B$2:$B$33', right=True),
             # season snap%
-            '=INDEX(SNAPS!$D$2:$D$448,MATCH($B{0} & "*",SNAPS!$A$2:$A$448,0))'.format(append_row),
+            bld_excel_formula('SNAPS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # season rush atts
+            bld_excel_formula('RUSH_ATTS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # season targets
+            bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+            # week snap% (week6)
+            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            # week rush atts (week 6)
+            bld_excel_formula('RUSH_ATTS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            # week targets (week 6)
+            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            # average PPG
+            stats_dict['avg_ppg'],
+            # ECR
+            '=RANK(V{0}, $V$3:$V$69,1)'.format(append_row),
+            # ECR Data
+            bld_excel_formula('RB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
         ]
+        # hide column V (ECR Data)
+        wb[title].column_dimensions['V'].hidden = True
     elif title == 'WR':
         positional_fields = [
             # pass dvoa
-            '=INDEX(TEAMDEF!$H$2:$H$34,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$2:$B$34,0))'.format(append_row),
+            bld_excel_formula('TEAMDEF', '$H$2:$H$34', '$C', append_row, '$B$2:$B$34', right=True),
             # vs. WR1
-            '=INDEX(TEAMDEF!$D$37:$D$68,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$37:$B$68,0))'.format(append_row),
+            bld_excel_formula('TEAMDEF', '$D$37:$D$68', '$C', append_row, '$B$37:$B$68', right=True),
             # vs. WR2
-            '=INDEX(TEAMDEF!$H$37:$H$68,MATCH(RIGHT($C{0}, LEN($C{0}) - SEARCH(" ",$C{0},1)),TEAMDEF!$B$37:$B$68,0))'.format(append_row),
+            bld_excel_formula('TEAMDEF', '$H$37:$H$68', '$C', append_row, '$B$37:$B$68', right=True),
+            # season snap%
+            bld_excel_formula('SNAPS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+            # season targets
+            bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+            # week snap% (week6)
+            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            # week targets (week 6)
+            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            # average PPG
+            stats_dict['avg_ppg'],
+            # ECR
+            '=RANK(S{0}, $S$3:$S$94,1)'.format(append_row),
+            # ECR Data
+            bld_excel_formula('WR_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+        ]
+        # hide column S (ECR Data)
+        wb[title].column_dimensions['S'].hidden = True
+    elif title == 'TE':
+        positional_fields = [
+            # pass dvoa
+            bld_excel_formula('TEAMDEF', '$H$2:$H$34', '$C', append_row, '$B$2:$B$34', right=True),
+            # vs. TE
+            bld_excel_formula('TEAMDEF', '$P$37:$P$68', '$C', append_row, '$B$37:$B$68', right=True),
+            # season snap%
+            bld_excel_formula('SNAPS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+            # season targets
+            bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+            # week snap% (week6)
+            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            # week targets (week 6)
+            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            # average PPG
+            stats_dict['avg_ppg'],
+            # ECR
+            '=RANK(R{0}, $R$3:$R$52,1)'.format(append_row),
+            # ECR Data
+            bld_excel_formula('TE_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+        ]
+        # hide column r (ECR Data)
+        wb[title].column_dimensions['R'].hidden = True
+    elif title == 'DST':
+        positional_fields = [
+            # average PPG
+            stats_dict['avg_ppg'],
+            # ECR
+            '=RANK(L{0}, $L$3:$L$52,1)'.format(append_row),
+            # ECR Data
+            bld_excel_formula('DST_ECR', '$A$2:$A${}'.format(max_row), '$F', append_row, '$C$2:$C{}'.format(max_row), dst=True),
         ]
 
+        # hide column l (ECR Data)
+        wb[title].column_dimensions['L'].hidden = True
     row = all_positions_fields + positional_fields
 
+    # center all cells horzitontally/vertically in row
     for i, text in enumerate(row, start=1):
         nice = wb[title].cell(row=append_row, column=i, value=text)
         al = Alignment(horizontal="center", vertical="center")
@@ -753,6 +1017,46 @@ def position_tab(wb, values, title):
 
     # hide column F (abbv)
     wb[title].column_dimensions['F'].hidden = True
+
+
+def top_lvl_header(wb, title, text, start_col, length, color):
+    # style for merge + center
+    al = Alignment(horizontal="center", vertical="center")
+    # bold font
+    font = Font(b=True, color="FFFFFFFF")
+
+    # set cell to start merge + insert text
+    cell = "{0}1".format(start_col)
+    wb[title][cell] = text
+    # set range to format merged cells
+    fmt_range = "{0}1:{1}1".format(start_col, chr(ord(start_col) + length))
+    style_range(wb[title], fmt_range, font=font, fill=PatternFill(patternType="solid", fgColor=color), alignment=al)
+
+
+def bld_excel_formula(title, rtrn_range, match, row, match_range, week=False, right=False, qb_stats=False, dst=False):
+    # '=INDEX(OLINE!$C$2:$C$33,MATCH($F{0},OLINE!$B$2:$B$33,0))'.format(append_row),
+
+    # use RIGHT for splitting the opponent. IE JAX for vs. JAX
+    if right:
+        base_formula = 'INDEX({0}!{1}, MATCH(RIGHT({2}{3}, LEN({2}{3}) - SEARCH(" ",{2}{3},1)) & "*", {0}!{4},0))'.format(
+            title, rtrn_range, match, row, match_range)
+    elif qb_stats:
+        base_formula = 'INDEX({0}!{1}, MATCH(LEFT({2}{3}, 1) & "*" & RIGHT({2}{3}, LEN({2}{3}) - SEARCH(" ",{2}{3},1)) & "*", {0}!{4},0))'.format(
+            title, rtrn_range, match, row, match_range)
+    elif dst:
+        base_formula = 'INDEX({0}!{1}, MATCH("*(" & {2}{3} & "*", {0}!{4},0))'.format(
+            title, rtrn_range, match, row, match_range)
+    else:
+        base_formula = 'INDEX({0}!{1}, MATCH({2}{3} & "*", {0}!{4},0))'.format(
+            title, rtrn_range, match, row, match_range)
+
+    # if we are looking at weekly stats, blank should be blank, not zero
+    if week:
+        formula = 'IF(ISBLANK({0}), " ", {0})'.format(base_formula)
+    else:
+        formula = base_formula
+
+    return "=" + formula
 
 
 def style_ranges(wb):
@@ -771,37 +1075,99 @@ def style_ranges(wb):
         # ws.auto_filter.add_sort_condition(sort_range)
         # bigger/positive = green, smaller/negative = red
         green_to_red_headers = [
-            'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'WR1', 'WR2',
-            'O-Line'
+            'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
+            'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'vs. TE', 'D-Line Sack%', 'Average PPG',
+            'Rushing Yards', 'DYAR', 'QBR'
         ]
         green_to_red_rule = ColorScaleRule(start_type='min', start_color=red,
                                            mid_type='percentile', mid_value=50, mid_color=yellow,
                                            end_type='max', end_color=green)
         # bigger/positive = red, smaller/negative = green
         red_to_green_headers = [
-            'Line', 'D-Line'
+            'Line', 'D-Line', 'O-Line Sack%', 'ECR'
         ]
         red_to_green_rule = ColorScaleRule(start_type='min', start_color=green,
                                            mid_type='percentile', mid_value=50, mid_color=yellow,
                                            end_type='max', end_color=red)
         # color ranges
-        for i in range(1, ws.max_column):
-
+        for i in range(1, ws.max_column + 1):
             if ws.cell(row=2, column=i).value in green_to_red_headers:
                 column_letter = get_column_letter(i)
                 # color range (green to red)
                 cell_rng = "{0}{1}:{2}".format(column_letter, '3', ws.max_row)
+                # print("[{}] Coloring {} [{} - {}] green_to_red".format(title, ws.cell(row=2, column=i).value, ws.cell(row=2, column=i), cell_rng))
                 wb[title].conditional_formatting.add(cell_rng, green_to_red_rule)
             elif ws.cell(row=2, column=i).value in red_to_green_headers:
                 column_letter = get_column_letter(i)
                 # color range (red to green)
                 cell_rng = "{0}{1}:{2}".format(column_letter, '3', ws.max_row)
+                # print("[{}] Coloring {} [{} - {}] red_to_green".format(title, ws.cell(row=2, column=i).value, ws.cell(row=2, column=i), cell_rng))
                 wb[title].conditional_formatting.add(cell_rng, red_to_green_rule)
 
         # set column widths
         column_widths = [8, 20, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8]
         for i, column_width in enumerate(column_widths):
             ws.column_dimensions[get_column_letter(i + 1)].width = column_width
+
+
+def remove_rows_without_ecr(wb):
+    for title in ['QB']:
+        ws = wb[title]
+
+        name_col = 'B'
+        for cell in ws[name_col]:
+            # skip first row (None)
+            if cell.row <= 2:
+                continue
+
+            # guy we are looking for
+            name = cell.value
+
+            # get ECR sheet
+            ecr_ws = wb[title + '_ECR']
+            search_col = 'C'
+
+            # search ECR sheet for guy
+            bool = bool_found_player_in_ecr_tab(ecr_ws[search_col], name)
+
+            if bool is False:
+                print("Did not find {}.. will delete row {}".format(name, cell.row))
+                ws.delete_rows(cell.row)
+
+
+def bool_found_player_in_ecr_tab(ws_column, name):
+    # loop through cells in column
+    for c in ws_column:
+        # if cell is empty, continue
+        if c.value is None:
+            continue
+
+        # if name is found, move along
+        if name in c.value:
+            return True
+    return False
+
+
+def order_sheets(wb):
+    # QB, RB, WR, TE, DST first
+    order = [wb.worksheets.index(wb[i]) for i in ['QB', 'RB', 'WR', 'TE', 'DST']]
+    # order = [wb.worksheets.index(wb['QB']),
+    #          wb.worksheets.index(wb['RB']),
+    #          wb.worksheets.index(wb['WR']),
+    #          wb.worksheets.index(wb['TE']),
+    #          wb.worksheets.index(wb['DST'])]
+
+    order.extend(list(set(range(len(wb._sheets))) - set(order)))
+    wb._sheets = [wb._sheets[i] for i in order]
+
+
+def check_name_in_ecr(wb, position, name):
+    # get ECR sheet
+    ecr_ws = wb[position + '_ECR']
+    search_col = 'C'
+
+    # search ECR sheet for guy
+    return bool_found_player_in_ecr_tab(ecr_ws[search_col], name)
 
 
 def main():
@@ -816,33 +1182,47 @@ def main():
     # guess types (numbers, floats, etc)
     wb.guess_types = True
 
+    # make sources dir if it does not exist
+    directory = 'sources'
+    if not path.exists(directory):
+        makedirs(directory)
+
+    # pull stats from fantasypros.com
+    fpros_ecr(wb, 'QB')
+    fpros_ecr(wb, 'RB')
+    fpros_ecr(wb, 'WR')
+    fpros_ecr(wb, 'TE')
+    fpros_ecr(wb, 'DST')
+
     with open(fn, 'r') as f:
         # read entire file into memory
         lines = f.readlines()
 
         for i, line in enumerate(lines):
-            # append header to first worksheet, otherwise skip it
+            # skip header
             if i == 0:
                 continue
 
             fields = line.rstrip().split(',')
+
+            # check if player has ECR
+            position = fields[0]
+            name = fields[2]
+
+            # 'fix' name to remove extra stuff like Jr or III (Todd Gurley II for example)
+            name = ' '.join(name.split(' ')[:2])
+            # also remove periods (T.J. Yeldon for example)
+            name = name.replace('.', '')
+
+            if position == 'DST':
+                name = fields[7]
+
+            # if player does not exist, skip
+            if check_name_in_ecr(wb, position, name) is False:
+                # print("Could not find {} [{}]".format(name, position))
+                continue
+
             position_tab(wb, fields, fields[0])
-            # if fields[0] == 'RB':
-            #     position_tab(wb, fields, 'RB')
-            # elif fields[0] == 'WR':
-            #     position_tab(wb, fields, 'WR')
-            # else:
-            #     # % salary DK
-            #     salary_perc = "{0:.1%}".format(float(fields[5]) / 50000)
-            #     salary = "${0}".format(fields[5])
-            #
-            #     my_fields = [fields[0], fields[2], salary, salary_perc, fields[6], fields[7], fields[8]]
-            #
-            #     # print fields to position-named worksheet
-            #     print_position_ws(wb, fields[0], my_fields)
-            #
-            # # print fields to first worksheet
-            # ws1.append(line.rstrip().split(','))
 
     # pull stats from lineups.com
     get_nfl_receptions(wb)
@@ -853,14 +1233,25 @@ def main():
     get_dvoa_rankings(wb)
     get_oline_rankings(wb)
     get_dline_rankings(wb)
+    get_qb_stats(wb)
+    # pull vegas stats from rotogrinders.com
     get_vegas_rg(wb)
 
     # color ranges
     style_ranges(wb)
+    # remove rows without ECR ranking (either out or useless)
+    # remove_rows_without_ecr(wb)
+
+    # order sheets
+    # wb._sheets =[wb._sheets[i] for i in myorder]
+    order_sheets(wb)
 
     # save workbook (.xlsx file)
     wb.remove(ws1)  # remove blank worksheet
     wb.save(filename=dest_filename)
+
+    # remove rows without an ECR ranking (likely out or useless))
+    # wb_data_only = load_workbook(dest_filename, data_only=True)
 
 
 if __name__ == "__main__":

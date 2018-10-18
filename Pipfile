@@ -8,8 +8,6 @@ openpyxl = "*"
 requests = "*"
 "bs4" = "*"
 "html5lib" = "*"
-demjson = "*"
-dirtyjson = "*"
 
 [dev-packages]
 
