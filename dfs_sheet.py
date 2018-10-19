@@ -52,22 +52,6 @@ def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment
                 c.fill = fill
 
 
-def print_header(sheet):
-    """ print header to sheet """
-    # set up columns and column widths
-    columns = ["IP", "Date (UTC)", "Method", "URL", "Referrer", "User Agent"]
-    column_widths = [18, 20, 8, 80, 25, 100]
-
-    for col_num, header_field in enumerate(columns):
-        sheet.cell(row=1, column=col_num + 1).value = header_field
-    light_orange = "00FFB732"
-    for row in sheet.iter_rows('A1:H1'):
-        for cell in row:
-            cell.font = Font(bold=True, color=colors.BLACK)
-            cell.border = Border(bottom=Side(style="thin"))
-            cell.fill = PatternFill(patternType='solid', start_color=light_orange, end_color=light_orange)
-
-
 def create_sheet_header(wb, title, header):
     wb.create_sheet(title=title)
     wb[title].append(header)
@@ -99,6 +83,34 @@ def pull_data(filename, ENDPOINT):
             data = json.load(json_file)
 
     return data
+
+
+def pull_soup_data(filename, ENDPOINT):
+    """Either pull file from html or from file."""
+
+    soup = None
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
+
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
+
+        # dump html to file to avoid multiple requests
+        with open(filename, 'w') as outfile:
+            print(r.text, file=outfile)
+
+        soup = BeautifulSoup(r.text, 'html5lib')
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load html from file
+        with open(filename, 'r') as html_file:
+            soup = BeautifulSoup(html_file, 'html5lib')
+
+    return soup
 
 
 def get_nfl_snaps(wb):
@@ -419,27 +431,8 @@ def get_vegas_rg(wb):
     header = ['Time', 'Team', 'Opponent', 'Line', 'MoneyLine', 'Over/Under', 'Projected Points', 'Projected Points Change']
     create_sheet_header(wb, title, header)
 
-    soup = None
-    if not path.isfile(filename):
-        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
-        # send GET request
-        r = requests.get(ENDPOINT)
-        status = r.status_code
-
-        # if not successful, raise an exception
-        if status != 200:
-            raise Exception('Requests status != 200. It is: {0}'.format(status))
-
-        # dump html to file to avoid multiple requests
-        with open(filename, 'w') as outfile:
-            print(r.text, file=outfile)
-
-        soup = BeautifulSoup(r.text, 'html5lib')
-    else:
-        print("File exists [{}]. Nice!".format(filename))
-        # load html from file
-        with open(filename, 'r') as html_file:
-            soup = BeautifulSoup(html_file, 'html5lib')
+    # pull data
+    soup = pull_soup_data(filename, ENDPOINT)
 
     # find script(s) in the html
     script = soup.findAll('script')
@@ -473,27 +466,8 @@ def get_dvoa_rankings(wb):
     dir = 'sources'
     filename = path.join(dir, fn)
 
-    soup = None
-    if not path.isfile(filename):
-        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
-        # send GET request
-        r = requests.get(ENDPOINT)
-        status = r.status_code
-
-        # if not successful, raise an exception
-        if status != 200:
-            raise Exception('Requests status != 200. It is: {0}'.format(status))
-
-        # dump html to file to avoid multiple requests
-        with open(filename, 'w') as outfile:
-            print(r.text, file=outfile)
-
-        soup = BeautifulSoup(r.text, 'html5lib')
-    else:
-        print("File exists [{}]. Nice!".format(filename))
-        # load html from file
-        with open(filename, 'r') as html_file:
-            soup = BeautifulSoup(html_file, 'html5lib')
+    # pull data
+    soup = pull_soup_data(filename, ENDPOINT)
 
     # find all tables (3) in the html
     table = soup.findAll('table')
@@ -580,27 +554,8 @@ def get_oline_rankings(wb):
     dir = 'sources'
     filename = path.join(dir, fn)
 
-    soup = None
-    if not path.isfile(filename):
-        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
-        # send GET request
-        r = requests.get(ENDPOINT)
-        status = r.status_code
-
-        # if not successful, raise an exception
-        if status != 200:
-            raise Exception('Requests status != 200. It is: {0}'.format(status))
-
-        # dump html to file to avoid multiple requests
-        with open(filename, 'w') as outfile:
-            print(r.text, file=outfile)
-
-        soup = BeautifulSoup(r.text, 'html5lib')
-    else:
-        print("File exists [{}]. Nice!".format(filename))
-        # load html from file
-        with open(filename, 'r') as html_file:
-            soup = BeautifulSoup(html_file, 'html5lib')
+    # pull data
+    soup = pull_soup_data(filename, ENDPOINT)
 
     # find all tables (2) in the html
     table = soup.findAll('table')
@@ -636,27 +591,8 @@ def get_dline_rankings(wb):
     dir = 'sources'
     filename = path.join(dir, fn)
 
-    soup = None
-    if not path.isfile(filename):
-        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
-        # send GET request
-        r = requests.get(ENDPOINT)
-        status = r.status_code
-
-        # if not successful, raise an exception
-        if status != 200:
-            raise Exception('Requests status != 200. It is: {0}'.format(status))
-
-        # dump html to file to avoid multiple requests
-        with open(filename, 'w') as outfile:
-            print(r.text, file=outfile)
-
-        soup = BeautifulSoup(r.text, 'html5lib')
-    else:
-        print("File exists [{}]. Nice!".format(filename))
-        # load html from file
-        with open(filename, 'r') as html_file:
-            soup = BeautifulSoup(html_file, 'html5lib')
+    # pull data
+    soup = pull_soup_data(filename, ENDPOINT)
 
     # find all tables (2) in the html
     table = soup.findAll('table')
@@ -692,27 +628,8 @@ def get_qb_stats_FO(wb):
     dir = 'sources'
     filename = path.join(dir, fn)
 
-    soup = None
-    if not path.isfile(filename):
-        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
-        # send GET request
-        r = requests.get(ENDPOINT)
-        status = r.status_code
-
-        # if not successful, raise an exception
-        if status != 200:
-            raise Exception('Requests status != 200. It is: {0}'.format(status))
-
-        # dump html to file to avoid multiple requests
-        with open(filename, 'w') as outfile:
-            print(r.text, file=outfile)
-
-        soup = BeautifulSoup(r.text, 'html5lib')
-    else:
-        print("File exists [{}]. Nice!".format(filename))
-        # load html from file
-        with open(filename, 'r') as html_file:
-            soup = BeautifulSoup(html_file, 'html5lib')
+    # pull data
+    soup = pull_soup_data(filename, ENDPOINT)
 
     # find all tables (3) in the html
     table = soup.findAll('table')
@@ -753,27 +670,8 @@ def fpros_ecr(wb, position):
     dir = 'sources'
     filename = path.join(dir, fn)
 
-    soup = None
-    if not path.isfile(filename):
-        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
-        # send GET request
-        r = requests.get(ENDPOINT)
-        status = r.status_code
-
-        # if not successful, raise an exception
-        if status != 200:
-            raise Exception('Requests status != 200. It is: {0}'.format(status))
-
-        # dump html to file to avoid multiple requests
-        with open(filename, 'w') as outfile:
-            print(r.text, file=outfile)
-
-        soup = BeautifulSoup(r.text, 'html5lib')
-    else:
-        print("File exists [{}]. Nice!".format(filename))
-        # load html from file
-        with open(filename, 'r') as html_file:
-            soup = BeautifulSoup(html_file, 'html5lib')
+    # pull data
+    soup = pull_soup_data(filename, ENDPOINT)
 
     # find all tables (2) in the html
     table = soup.find('table', id='rank-data')
@@ -847,13 +745,6 @@ def position_tab(wb, values, title):
                 'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
             ]
         elif title == 'RB':
-            # Starting with D1
-            # DK, DK%, blank, VEGASx3, MATCHUPx4, SEASON,x3, LAST WEEKx3, RANKINGSx2
-            # top header
-            # bold, white font
-            font = Font(b=True, color="FFFFFFFF")
-
-            # top level header
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
             top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
             top_lvl_header(wb, title, 'MATCHUP', 'J', 3, 'FFED7D31')
@@ -866,19 +757,17 @@ def position_tab(wb, values, title):
                 'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
             ]
         elif title == 'WR':
-            # Starting with D1
-            # DK, DK%, blank, VEGASx3, MATCHUPx4, SEASON,x3, LAST WEEKx3, RANKINGSx2
-            # top header
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
             top_lvl_header(wb, title, 'VEGAS', 'G', 2, 'FFFFC000')
             top_lvl_header(wb, title, 'MATCHUP', 'J', 2, 'FFED7D31')
-            top_lvl_header(wb, title, 'SEASON', 'M', 1, 'FF5B9BD5')
-            top_lvl_header(wb, title, 'LAST WEEK', 'O', 1, 'FF4472C4')
-            top_lvl_header(wb, title, 'RANKINGS', 'Q', 2, 'FF70AD47')
+            top_lvl_header(wb, title, 'SEASON', 'M', 2, 'FF5B9BD5')
+            top_lvl_header(wb, title, 'LAST WEEK', 'P', 2, 'FF4472C4')
+            top_lvl_header(wb, title, 'RANKINGS', 'S', 2, 'FF70AD47')
 
             position_fields = [
-                'Pass DVOA', 'vs. WR1', 'vs. WR2', 'Snap%', 'Targets', 'Snap%', 'Targets',
-                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
+                'Pass DVOA', 'vs. WR1', 'vs. WR2', 'Snap%', 'Targets', 'Recepts',
+                'Snap%', 'Targets', 'Recepts', 'Average PPG',
+                'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
             ]
         elif title == 'TE':
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
@@ -917,9 +806,6 @@ def position_tab(wb, values, title):
 
         for i, field in enumerate(header):
             wb[title].cell(row=append_row, column=i + 1, value=field)
-
-        # freeze header
-        wb[title].freeze_panes = "O3"
 
     keys = ['pos', 'name_id', 'name', 'id', 'roster_pos', 'salary', 'matchup', 'abbv', 'avg_ppg']
     stats_dict = dict(zip(keys, values))
@@ -1007,6 +893,7 @@ def position_tab(wb, values, title):
         max_row = wb[title + '_ECR'].max_row
         positional_fields = [
             # run dvoa
+            # 'x',  # for testing bld_excel_formula_2
             bld_excel_formula('TEAMDEF', 'J$2:$J$33', '$C', append_row, '$B$2:$B$33', right=True),
             # pass dvoa (vs. RB)
             bld_excel_formula('TEAMDEF', 'T$37:$T$68', '$C', append_row, '$B$37:$B$68', right=True),
@@ -1047,10 +934,14 @@ def position_tab(wb, values, title):
             bld_excel_formula('SNAPS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # season targets
             bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+            # season receptions
+            bld_excel_formula('RECEPTIONS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # week snap% (week6)
             bld_excel_formula('SNAPS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
             # week targets (week 6)
             bld_excel_formula('TARGETS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            # week targets (week 6)
+            bld_excel_formula('RECEPTIONS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
             # average PPG
             stats_dict['avg_ppg'],
             # ECR
@@ -1115,6 +1006,77 @@ def position_tab(wb, values, title):
     wb[title].column_dimensions['D'].hidden = True
 
 
+def find_header_col(ws, header_value):
+    header_row = 2
+
+    # search through header_row for value
+    for col in ws[header_row]:
+        if col.value == header_value:
+            return col.column
+
+    return None
+
+
+
+def write_RB_cols(wb):
+    ws = wb['RB']
+    position_fields = [
+        'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line', 'Snap%', 'Rush ATTs',
+        'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
+    ]
+    # set max_row for formulas
+    max_row = ws.max_row
+
+    for field in position_fields:
+        header_col = find_header_col(ws, field)
+        print('field {} is in header column {}'.format(field, header_col))
+        # run dvoa
+        if field == 'Run DVOA':
+            for cell in ws[header_col]:
+                # skip header rows
+                if cell.row <= 2:
+                    continue
+                cell.value = bld_excel_formula_2(
+                    'TEAMDEF', '$J', 2, 33,  # return $J in TEAMDEF
+                    '$C', cell.row,
+                    '$B', 2, 33, right=True)
+        elif field == 'Pass DVOA':
+            for cell in ws[header_col]:
+                # skip header rows
+                if cell.row <= 2:
+                    continue
+                cell.value = bld_excel_formula_2(
+                    'TEAMDEF', '$T', 37, max_row,  # return $J in TEAMDEF
+                    '$C', cell.row,
+                    '$B', 37, 68, right=True)
+        # # pass dvoa (vs. RB)
+        # bld_excel_formula('TEAMDEF', 'T$37:$T$68', '$C', append_row, '$B$37:$B$68', right=True),
+        # # o line
+        # bld_excel_formula('OLINE', '$C$2:$C$33', '$D', append_row, '$B$2:$B$33'),
+        # # d line
+        # bld_excel_formula('DLINE', '$C$2:$C$33', '$C', append_row, '$B$2:$B$33', right=True),
+        # # season snap%
+        # bld_excel_formula('SNAPS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+        # # season rush atts
+        # bld_excel_formula('RUSH_ATTS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+        # # season targets
+        # bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+        # # week snap% (week6)
+        # bld_excel_formula('SNAPS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+        # # week rush atts (week 6)
+        # bld_excel_formula('RUSH_ATTS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+        # # week targets (week 6)
+        # bld_excel_formula('TARGETS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+        # # average PPG
+        # stats_dict['avg_ppg'],
+        # # ECR
+        # '=RANK(V{0}, $V$3:$V$69,1)'.format(append_row),
+        # # +/- rank
+        # 'x',
+        # # ECR Data
+        # bld_excel_formula('RB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+
+
 def top_lvl_header(wb, title, text, start_col, length, color):
     # style for merge + center
     al = Alignment(horizontal="center", vertical="center")
@@ -1127,6 +1089,35 @@ def top_lvl_header(wb, title, text, start_col, length, color):
     # set range to format merged cells
     fmt_range = "{0}1:{1}1".format(start_col, chr(ord(start_col) + length))
     style_range(wb[title], fmt_range, font=font, fill=PatternFill(patternType="solid", fgColor=color), alignment=al)
+
+
+def bld_excel_formula_2(title, rtrn_col, rtrn_start, rtrn_stop, match, row, match_col, match_start, match_stop,
+                        week=False, right=False, qb_stats=False, dst=False):
+    # '=INDEX(OLINE!$C$2:$C$33,MATCH($F{0},OLINE!$B$2:$B$33,0))'.format(append_row),
+
+    rtrn_range = "{0}{1}:{0}{2}".format(rtrn_col, rtrn_start, rtrn_stop)
+    match_range = "{0}{1}:{0}{2}".format(match_col, match_start, match_stop)
+    # use RIGHT for splitting the opponent. IE JAX for vs. JAX
+    if right:
+        base_formula = 'INDEX({0}!{1}, MATCH(RIGHT({2}{3}, LEN({2}{3}) - SEARCH(" ",{2}{3},1)) & "*", {0}!{4},0))'.format(
+            title, rtrn_range, match, row, match_range)
+    elif qb_stats:
+        base_formula = 'INDEX({0}!{1}, MATCH(LEFT({2}{3}, 1) & "*" & RIGHT({2}{3}, LEN({2}{3}) - SEARCH(" ",{2}{3},1)) & "*", {0}!{4},0))'.format(
+            title, rtrn_range, match, row, match_range)
+    elif dst:
+        base_formula = 'INDEX({0}!{1}, MATCH("*(" & {2}{3} & "*", {0}!{4},0))'.format(
+            title, rtrn_range, match, row, match_range)
+    else:
+        base_formula = 'INDEX({0}!{1}, MATCH({2}{3} & "*", {0}!{4},0))'.format(
+            title, rtrn_range, match, row, match_range)
+
+    # if we are looking at weekly stats, blank should be blank, not zero
+    if week:
+        formula = 'IF(ISBLANK({0}), " ", {0})'.format(base_formula)
+    else:
+        formula = base_formula
+
+    return "=" + formula
 
 
 def bld_excel_formula(title, rtrn_range, match, row, match_range, week=False, right=False, qb_stats=False, dst=False):
@@ -1196,8 +1187,8 @@ def style_ranges(wb):
         # bigger/positive = green, smaller/negative = red
         green_to_red_headers = [
             'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
-            'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'vs. TE', 'D-Line Sack%', 'Average PPG',
-            'Rushing Yards', 'DYAR', 'QBR', 'Def Y/A', 'Def Compl%', 'Def TD%'
+            'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'Recepts', 'vs. TE', 'D-Line Sack%',
+            'Average PPG', 'Rushing Yards', 'DYAR', 'QBR', 'Def Y/A', 'Def Compl%', 'Def TD%'
         ]
         green_to_red_rule = ColorScaleRule(start_type='min', start_color=red,
                                            mid_type='percentile', mid_value=50, mid_color=yellow,
@@ -1242,31 +1233,6 @@ def style_ranges(wb):
             ws.column_dimensions[get_column_letter(i + 1)].width = column_width
 
 
-def remove_rows_without_ecr(wb):
-    for title in ['QB']:
-        ws = wb[title]
-
-        name_col = 'B'
-        for cell in ws[name_col]:
-            # skip first row (None)
-            if cell.row <= 2:
-                continue
-
-            # guy we are looking for
-            name = cell.value
-
-            # get ECR sheet
-            ecr_ws = wb[title + '_ECR']
-            search_col = 'C'
-
-            # search ECR sheet for guy
-            bool = bool_found_player_in_ecr_tab(ecr_ws[search_col], name)
-
-            if bool is False:
-                print("Did not find {}.. will delete row {}".format(name, cell.row))
-                ws.delete_rows(cell.row)
-
-
 def bool_found_player_in_ecr_tab(ws_column, name):
     # loop through cells in column
     for c in ws_column:
@@ -1278,6 +1244,13 @@ def bool_found_player_in_ecr_tab(ws_column, name):
         if name in c.value:
             return True
     return False
+
+
+def freeze_header(wb):
+    # freeze header
+    for title in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[title]
+        ws.freeze_panes = "{}3".format(get_column_letter(ws.max_column))
 
 
 def order_sheets(wb):
@@ -1305,7 +1278,7 @@ def insert_ranks(wb):
 
         ecr_col = ''
         ecr_data_col = ''
-        salary_col = 'E'  # salary coloumn is always E (right now)
+        salary_col = ''
         salary_rank_col = ''
         plus_minus_col = ''
         max_row = ws.max_row
@@ -1316,6 +1289,8 @@ def insert_ranks(wb):
                 ecr_col = col.column
             elif col.value == 'ECR Data':
                 ecr_data_col = col.column
+            elif col.value == 'Salary':
+                salary_col = col.column
             elif col.value == 'Salary Rank':
                 salary_rank_col = col.column
             elif col.value == '+/- Rank':
@@ -1344,16 +1319,6 @@ def insert_ranks(wb):
                 continue
             cell.value = '={0}{1} - {2}{1}'.format(
                 salary_rank_col, cell.row, ecr_col)
-            print("doing {}".format(cell.value))
-        # ECR
-
-        # + / - salary
-        # '=V{0} - S{0}'.format(append_row),
-        # ECR DATA
-        # bld_excel_formula('QB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
-        # salary rank (low to high)
-        # '=RANK(E{0}, $E$3:$E${1},0)'.format(append_row, max_row),
-        print("ecr_col: {} ecr_data_col: {} salary_col: {} plus_minus_col: {}".format(ecr_col, ecr_data_col, salary_col, plus_minus_col))
 
         # hide data columns
         ws.column_dimensions[ecr_data_col].hidden = True
@@ -1425,15 +1390,20 @@ def main():
     # pull vegas stats from rotogrinders.com
     get_vegas_rg(wb)
 
-    # color ranges
+    # test
+    # write_RB_cols(wb)
+
+    # set conditional formatting ranges
     style_ranges(wb)
+
+    # apply left/right borders for sections
     apply_border(wb)
 
-    # test
+    # inserts ecr/salary ranks and +/-
     insert_ranks(wb)
 
-    # remove rows without ECR ranking (either out or useless)
-    # remove_rows_without_ecr(wb)
+    # freeze header
+    freeze_header(wb)
 
     # order sheets
     # wb._sheets =[wb._sheets[i] for i in myorder]
