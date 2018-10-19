@@ -22,7 +22,6 @@ def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment
     :param fill: An openpyxl PatternFill or GradientFill
     :param font: An openpyxl Font object
     """
-
     top = Border(top=border.top)
     left = Border(left=border.left)
     right = Border(right=border.right)
@@ -87,7 +86,6 @@ def pull_data(filename, ENDPOINT):
 
 def pull_soup_data(filename, ENDPOINT):
     """Either pull file from html or from file."""
-
     soup = None
     if not path.isfile(filename):
         print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
@@ -722,7 +720,7 @@ def position_tab(wb, values, title):
 
         # second header
         all_positions_header = [
-            'Position', 'Name', 'Abbv', 'Opp', 'Salary', 'Salary%',
+            'Position', 'Name', 'Opp', 'Abbv', 'Salary', 'Salary%',
             'Implied Total', 'O/U', 'Line'
         ]
 
@@ -1015,7 +1013,6 @@ def find_header_col(ws, header_value):
             return col.column
 
     return None
-
 
 
 def write_RB_cols(wb):
