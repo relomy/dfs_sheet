@@ -3,7 +3,7 @@
 
 class Player:
     """Creates Player object."""
-    def __init__(self, position, player_name, team_abbv, salary, game_info, average_ppg):
+    def __init__(self, player_name, position, team_abbv, salary, game_info, average_ppg, matchup, rank):
         self.name = player_name
 
         # from DK salary CSV
@@ -14,13 +14,18 @@ class Player:
         self.game_info = game_info
         self.average_ppg = average_ppg
 
+        # fantasy pros ECR
+        self.matchup = matchup
+        self.rank = rank
+
         self.opponent, self.opp_excel, self.home_team = self.get_opponent_matchup(game_info, team_abbv)
 
         # calculate salary percent
         self.salary_percent = "{0:.1%}".format(float(salary) / 50000)
 
         # ECR
-        self.matchup = None
+        self.matchup = matchup
+        self.rank = rank
 
         # vegas
         self.overunder = None
@@ -34,12 +39,26 @@ class Player:
         self.plus_minus = None
         self.salary_rank = None
 
+    def assign(self, p):
+        self.name = p.name
+        self.position = p.position
+        self.team_abbv = p.team_abbv
+        self.salary = p.salary
+        self.game_info = p.game_info
+        self.average_ppg = p.average_ppg
+        self.matchup = p.matchup
+        self.rank = p.rank
+
+        # calculated field
+        self.salary_percent = p.salary_percent
+
+        # variables from get_opponent_matchup()
+        self.opponent = p.opponent
+        self.opp_excel = p.opp_excel
+        self.home_team = p.home_team
+
     def __repr__(self):
         return "Player({}, {})".format(self.name, self.rank)
-
-    def set_ecr_fields(self, matchup, rank):
-        self.matchup = matchup
-        self.rank = rank
 
     def set_vegas_fields(self, overunder, line, projected):
         self.overunder = overunder
@@ -62,8 +81,8 @@ class Player:
 
 class QB(Player):
     """QB subclass of Player."""
-    def __init__(self, position, player_name, team_abbv, salary, game_info, average_ppg):
-        Player.__init__(self, position, player_name, team_abbv, salary, game_info, average_ppg)
+    def __init__(self, player):
+        self.assign(player)
 
     def __repr__(self):
         return("QB({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
@@ -71,8 +90,8 @@ class QB(Player):
 
 class RB(Player):
     """RB subclass of Player."""
-    def __init__(self, position, player_name, team_abbv, salary, game_info, average_ppg):
-        Player.__init__(self, position, player_name, team_abbv, salary, game_info, average_ppg)
+    def __init__(self, player):
+        self.assign(player)
 
         # matchup
         self.run_dvoa = None
@@ -100,8 +119,8 @@ class RB(Player):
 
 class WR(Player):
     """WR subclass of Player."""
-    def __init__(self, position, player_name, team_abbv, salary, game_info, average_ppg):
-        Player.__init__(self, position, player_name, team_abbv, salary, game_info, average_ppg)
+    def __init__(self, player):
+        self.assign(player)
 
         # matchup
         self.pass_def_rank = None
@@ -130,8 +149,12 @@ class WR(Player):
 
 class TE(Player):
     """TE subclass of Player."""
-    def __init__(self, position, player_name, team_abbv, salary, game_info, average_ppg):
-        Player.__init__(self, position, player_name, team_abbv, salary, game_info, average_ppg)
+    def __init__(self, player):
+        self.assign(player)
+
+    def set_dvoa_fields(self, pass_def_rank, te_rank):
+        self.pass_def_rank = pass_def_rank
+        self.te_rank = te_rank
 
     def __repr__(self):
         return("TE({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
@@ -139,8 +162,8 @@ class TE(Player):
 
 class DST(Player):
     """DST subclass of Player."""
-    def __init__(self, position, player_name, team_abbv, salary, game_info, average_ppg):
-        Player.__init__(self, position, player_name, team_abbv, salary, game_info, average_ppg)
+    def __init__(self, player):
+        self.assign(player)
 
     def __repr__(self):
         return("DST({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
