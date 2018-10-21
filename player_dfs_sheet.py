@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, PatternFill, Border, Side, Font, colors
 
-from player import QB, RB, WR, TE, DST
+from player import Player, QB, RB, WR, TE, DST
 
 
 def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment=None):
@@ -679,12 +679,8 @@ def main():
 
     # print(dvoa_dict['CHI'])
 
-    # create lists for position
-    qb_list = []
-    rb_list = []
-    wr_list = []
-    te_list = []
-    dst_list = []
+    # create list for players
+    player_list = []
 
     with open(fn, 'r') as f:
         # read entire file into memory
@@ -718,37 +714,49 @@ def main():
             #         print("Found {}!".format(name))
             ecr_item = find_name_in_ecr(ecr_pos_dict[position], name)
             if ecr_item:
-                ecr_rank, ecr_wsis, ecr_dumb_name, ecr_matchup, ecr_best, ecr_worse, ecr_avg, ecr_std_dev = ecr_item
-                # create Player subclass for position
+                # ecr_rank, ecr_wsis, ecr_dumb_name, ecr_matchup, ecr_best, ecr_worse, ecr_avg, ecr_std_dev = ecr_item
+                ecr_rank = ecr_item[0]
+                ecr_matchup = ecr_item[3]
+                # create Player class for position
+                p = Player(name, position, team_abbv, salary, game_info, average_ppg, ecr_matchup, ecr_rank)
+                # set vegas fields based on team abbv (key)
+                p.set_vegas_fields(vegas_dict[team_abbv]['overunder'], vegas_dict[team_abbv]['line'], vegas_dict[team_abbv]['projected'])
+
+                # local variable for dvoa_dict
+                dvoa_opponent = dvoa_dict[p.opponent]
+
                 if position == 'QB':
-                    qb = QB(position, name, team_abbv, salary, game_info, average_ppg)
-                    qb.set_ecr_fields(ecr_matchup, ecr_rank)
+                    qb = QB(p)
                     # set vegas fields based on team abbv (key)
-                    qb.set_vegas_fields(vegas_dict[team_abbv]['overunder'], vegas_dict[team_abbv]['line'], vegas_dict[team_abbv]['projected'])
-                    qb_list.append(qb)
+                    player_list.append(qb)
                 elif position == 'RB':
-                    rb = RB(position, name, team_abbv, salary, game_info, average_ppg)
-                    rb.set_ecr_fields(ecr_matchup, ecr_rank)
-                    # set vegas fields based on team abbv (key)
-                    rb.set_vegas_fields(vegas_dict[team_abbv]['overunder'], vegas_dict[team_abbv]['line'], vegas_dict[team_abbv]['projected'])
-                    rb.set_dvoa_fields(dvoa_dict[rb.opponent]['rush_def_rank'], dvoa_dict[rb.opponent]['rb_rank'])
-                    rb_list.append(rb)
+                    rb = RB(p)
+                    # set position-specific dvoa fields
+                    rb.set_dvoa_fields(dvoa_opponent['rush_def_rank'], dvoa_opponent['rb_rank'])
+                    player_list.append(rb)
                 elif position == 'WR':
-                    wr = WR(position, name, team_abbv, salary, game_info, average_ppg)
-                    wr.set_ecr_fields(ecr_matchup, ecr_rank)
-                    # set vegas fields based on team abbv (key)
-                    wr.set_vegas_fields(vegas_dict[team_abbv]['overunder'], vegas_dict[team_abbv]['line'], vegas_dict[team_abbv]['projected'])
-                    wr.set_dvoa_fields(dvoa_dict[wr.opponent]['pass_def_rank'], dvoa_dict[wr.opponent]['rb_rank'], dvoa_dict[wr.opponent]['rb_rank'])
-                    wr_list.append(wr)
+                    wr = WR(p)
+                    # set position-specific dvoa fields
+                    wr.set_dvoa_fields(dvoa_opponent['pass_def_rank'], dvoa_opponent['rb_rank'], dvoa_opponent['rb_rank'])
+                    player_list.append(wr)
+                elif position == 'TE':
+                    te = TE(p)
+                    # set position-specific dvoa fields
+                    te.set_dvoa_fields(dvoa_opponent['pass_def_rank'], dvoa_opponent['te_rank'])
+                    player_list.append(te)
+                elif position == 'DST':
+                    dst = DST(p)
+                    player_list.append(dst)
             # position_tab(wb, fields, fields[0])
 
     # for k, v in player_dict.items():
     #     print("k: {}".format(k))
     #     print("v: {}".format(v))
-    for i, wr in enumerate(wr_list):
-        if i == 5:
-            break
-        print(wr)
+    for i, player in enumerate(player_list):
+        if player.position == 'TE':
+            print(player)
+            print(player.te_rank)
+            print(player.pass_def_rank)
         # print("run_dvoa: {} pass_dvoa: {}".format(rb.run_dvoa, rb.rb_pass_dvoa))
         # print("[{}] ou: {} line: {} proj: {}".format(rb.team_abbv, rb.overunder, rb.line, rb.projected))
 
