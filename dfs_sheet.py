@@ -1,5 +1,6 @@
 """Create DFS spreadsheet from stats """
 
+import csv
 import json
 import re
 import requests
@@ -709,7 +710,7 @@ def fpros_ecr(wb, position):
                 wb[title].append(new_cols)
 
 
-def position_tab(wb, values, title):
+def position_tab(wb, values, title, fdraft_dict=None):
     # create positional tab if it does not exist
     # and set header(s)
     if title not in wb.sheetnames:
@@ -736,11 +737,13 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'PRESSURE', 'M', 1, 'FF00B0F0')
             top_lvl_header(wb, title, 'MATCHUP', 'O', 2, 'FFED7D31')
             top_lvl_header(wb, title, 'RANKINGS', 'R', 2, 'FF70AD47')
+            top_lvl_header(wb, title, 'FDRAFT', 'W', 1, 'FFA8F3D9')
 
             position_fields = [
                 'Rushing Yards', 'DYAR', 'QBR', 'O-Line Sack%', 'D-Line Sack%',
                 'Def Y/A', 'Def Compl%', 'Def TD%',
-                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
+                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
+                'FD Salary', 'FD Salary%'
             ]
         elif title == 'RB':
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
@@ -749,10 +752,12 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'SEASON', 'N', 2, 'FF5B9BD5')
             top_lvl_header(wb, title, 'LAST WEEK', 'Q', 2, 'FF4472C4')
             top_lvl_header(wb, title, 'RANKINGS', 'T', 2, 'FF70AD47')
+            top_lvl_header(wb, title, 'FDRAFT', 'Y', 1, 'FFA8F3D9')
 
             position_fields = [
                 'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line', 'Snap%', 'Rush ATTs',
-                'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
+                'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
+                'FD Salary', 'FD Salary%'
             ]
         elif title == 'WR':
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
@@ -761,11 +766,13 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'SEASON', 'M', 2, 'FF5B9BD5')
             top_lvl_header(wb, title, 'LAST WEEK', 'P', 2, 'FF4472C4')
             top_lvl_header(wb, title, 'RANKINGS', 'S', 2, 'FF70AD47')
+            top_lvl_header(wb, title, 'FDRAFT', 'X', 1, 'FFA8F3D9')
 
             position_fields = [
                 'Pass DVOA', 'vs. WR1', 'vs. WR2', 'Snap%', 'Targets', 'Recepts',
                 'Snap%', 'Targets', 'Recepts', 'Average PPG',
-                'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
+                'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
+                'FD Salary', 'FD Salary%'
             ]
         elif title == 'TE':
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
@@ -774,10 +781,12 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'SEASON', 'L', 1, 'FF5B9BD5')
             top_lvl_header(wb, title, 'LAST WEEK', 'N', 1, 'FF4472C4')
             top_lvl_header(wb, title, 'RANKINGS', 'P', 2, 'FF70AD47')
+            top_lvl_header(wb, title, 'FDRAFT', 'U', 1, 'FFA8F3D9')
 
             position_fields = [
                 'Pass DVOA', 'vs. TE', 'Snap%', 'Targets', 'Snap%', 'Targets', 'Average PPG',
-                'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
+                'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
+                'FD Salary', 'FD Salary%'
             ]
         elif title == 'DST':
             top_lvl_header(wb, title, 'DK', 'E', 1, 'FF000000')
@@ -785,7 +794,8 @@ def position_tab(wb, values, title):
             top_lvl_header(wb, title, 'RANKINGS', 'J', 2, 'FF70AD47')
 
             position_fields = [
-                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
+                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
+                'FD Salary', 'FD Salary%'
             ]
 
         # find max row to append
@@ -875,6 +885,10 @@ def position_tab(wb, values, title):
             bld_excel_formula('QB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
             # salary rank (low to high)
             '=RANK(E{0}, $E$3:$E${1},0)'.format(append_row, max_row),
+            # fdraft salary
+            fdraft_dict[name]['salary'],
+            # fdraft salary perc
+            fdraft_dict[name]['salary_perc'],
         ]
         # style column L & M (pressure %) with %/decimals
         for cell in wb[title]['M']:
@@ -919,6 +933,12 @@ def position_tab(wb, values, title):
             'x',
             # ECR Data
             bld_excel_formula('RB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+            # salary rank
+            'x',
+            # fdraft salary
+            fdraft_dict[name]['salary'],
+            # fdraft salary perc
+            fdraft_dict[name]['salary_perc'],
         ]
     elif title == 'WR':
         positional_fields = [
@@ -948,6 +968,12 @@ def position_tab(wb, values, title):
             'x',
             # ECR Data
             bld_excel_formula('WR_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+            # salary rank
+            'x',
+            # fdraft salary
+            fdraft_dict[name]['salary'],
+            # fdraft salary perc
+            fdraft_dict[name]['salary_perc'],
         ]
     elif title == 'TE':
         positional_fields = [
@@ -971,6 +997,12 @@ def position_tab(wb, values, title):
             'x',
             # ECR Data
             bld_excel_formula('TE_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+            # salary rank
+            'x',
+            # fdraft salary
+            fdraft_dict[name]['salary'],
+            # fdraft salary perc
+            fdraft_dict[name]['salary_perc'],
         ]
     elif title == 'DST':
         positional_fields = [
@@ -982,6 +1014,10 @@ def position_tab(wb, values, title):
             'x',
             # ECR Data
             bld_excel_formula('DST_ECR', '$A$2:$A${}'.format(max_row), '$D', append_row, '$C$2:$C{}'.format(max_row), dst=True),
+            # # fdraft salary
+            # fdraft_dict[name]['salary'],
+            # # fdraft salary perc
+            # fdraft_dict[name]['salary_perc'],
         ]
 
     row = all_positions_fields + positional_fields
@@ -993,11 +1029,17 @@ def position_tab(wb, values, title):
         nice.alignment = al
 
     # style column D (salary) with currency
-    for cell in wb[title]['E']:
+    for cell in wb[title][find_header_col(wb[title], 'Salary')]:
         cell.number_format = '$#,##0_);($#,##0)'
 
     # style column E (salary %) with %/decimals
-    for cell in wb[title]['F']:
+    for cell in wb[title][find_header_col(wb[title], 'Salary%')]:
+        cell.number_format = '##0.0%'
+
+    for cell in wb[title][find_header_col(wb[title], 'FD Salary')]:
+        cell.number_format = '$#,##0_);($#,##0)'
+
+    for cell in wb[title][find_header_col(wb[title], 'FD Salary%')]:
         cell.number_format = '##0.0%'
 
     # hide column F (abbv)
@@ -1322,6 +1364,53 @@ def insert_ranks(wb):
         ws.column_dimensions[salary_rank_col].hidden = True
 
 
+def read_fantasy_draft_csv(filename):
+    with open(filename, 'r') as f:
+        reader = csv.reader(f)
+
+        # store header row (and strip extra spaces)
+        headers = [header.lower().strip() for header in next(reader)]
+        headers.append('salary_perc')
+
+        dict1 = {}
+        for row in reader:
+            # remove periods from name
+            row[1] = row[1].replace('.', '')
+            # remove Jr. and III etc
+            row[1] = ' '.join(row[1].split(' ')[:2])
+
+            # store salary without $ or ,
+            row[5] = row[5][1:].replace(',', '')
+            salary_perc = "{0:0.1%}".format(float(row[5]) / 100000)
+            row.append(salary_perc)
+            dict1[row[1]] = {key: value for key, value in zip(headers, row)}
+
+        return dict1
+        # # read entire file into memory
+        # lines = f.readlines()
+
+        # for i, line in enumerate(lines):
+        #     # skip header
+        #     if i == 0:
+        #         continue
+        #
+        #     fields = line.rstrip().split(',')
+        #
+        #     print(fields)
+        #     exit()
+
+def print_fantasy_draft_to_wb(wb, fdraft_dict):
+    ws = wb.active
+
+    for key, value in fdraft_dict.items():
+        player = value
+        # print(player)
+        # ws.append([player[key] for key in player])
+        # for k, v in player.items():
+            # print("{}: {}".format(k, v))
+
+
+
 def main():
     fn = 'DKSalaries_week7_full.csv'
     dest_filename = 'sheet.xlsx'
@@ -1342,6 +1431,14 @@ def main():
     # pull positional stats from fantasypros.com
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
         fpros_ecr(wb, position)
+
+    fdraft_csv = 'FDraft_week7_full.csv'
+    if path.exists(fdraft_csv):
+        fdraft_dict = read_fantasy_draft_csv(fdraft_csv)
+    else:
+        fdraft_dict = None
+    #     print_fantasy_draft_to_wb(wb, fdraft_dict)
+    #     wb.save(filename=dest_filename)
 
     with open(fn, 'r') as f:
         # read entire file into memory
@@ -1371,7 +1468,7 @@ def main():
                 # print("Could not find {} [{}]".format(name, position))
                 continue
 
-            position_tab(wb, fields, fields[0])
+            position_tab(wb, fields, fields[0], fdraft_dict)
 
     # pull stats from lineups.com
     get_nfl_receptions(wb)
