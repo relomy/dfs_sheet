@@ -3,6 +3,7 @@
 
 class Player:
     """Creates Player object."""
+
     def __init__(self, player_name, position, team_abbv, salary, game_info, average_ppg, matchup, rank):
         self.name = player_name
 
@@ -44,6 +45,7 @@ class Player:
         self.salary_rank = None
 
     def assign(self, p):
+        """Class method to assign class variables (for use in subclasses)."""
         self.name = p.name
         self.position = p.position
         self.team_abbv = p.team_abbv
@@ -87,14 +89,22 @@ class Player:
             opp = home_team
             opp_excel = "at {}".format(home_team)
             home = False
-
         return opp, opp_excel, home
 
 
 class QB(Player):
     """QB subclass of Player."""
+
     def __init__(self, player):
         self.assign(player)
+
+        # pressure
+        self.line_sack_rate = None
+        self.opponent_sack_rate = None
+
+    def set_sack_fields(self, line_sack_rate, opponent_sack_rate):
+        self.line_sack_rate = line_sack_rate
+        self.opponent_sack_rate = opponent_sack_rate
 
     def __repr__(self):
         return("QB({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
@@ -102,14 +112,15 @@ class QB(Player):
 
 class RB(Player):
     """RB subclass of Player."""
+
     def __init__(self, player):
         self.assign(player)
 
         # matchup
         self.run_dvoa = None
         self.pass_dvoa = None
-        self.oline = None
-        self.dline = None
+        self.oline_adj_line_yds = None
+        self.opp_adj_line_yds = None
 
         # season
         self.season_snap_percent = None
@@ -125,12 +136,17 @@ class RB(Player):
         self.run_dvoa = run_dvoa
         self.rb_pass_dvoa = rb_pass_dvoa
 
+    def set_line_fields(self, oline_adj_line_yds, opp_adj_line_yds):
+        self.oline_adj_line_yds = oline_adj_line_yds
+        self.opp_adj_line_yds = opp_adj_line_yds
+
     def __repr__(self):
         return("RB({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
 
 
 class WR(Player):
     """WR subclass of Player."""
+
     def __init__(self, player):
         self.assign(player)
 
@@ -161,6 +177,7 @@ class WR(Player):
 
 class TE(Player):
     """TE subclass of Player."""
+
     def __init__(self, player):
         self.assign(player)
 
@@ -174,6 +191,7 @@ class TE(Player):
 
 class DST(Player):
     """DST subclass of Player."""
+
     def __init__(self, player):
         self.assign(player)
 
