@@ -14,6 +14,10 @@ class Player:
         self.game_info = game_info
         self.average_ppg = average_ppg
 
+        # fantasy draft salary CSV
+        self.fdraft_salary = None
+        self.fdraft_salary_perc = None
+
         # fantasy pros ECR
         self.matchup = matchup
         self.rank = rank
@@ -52,6 +56,10 @@ class Player:
         # calculated field
         self.salary_percent = p.salary_percent
 
+        # fantasy draft salary CSV
+        self.fdraft_salary = p.fdraft_salary
+        self.fdraft_salary_perc = p.fdraft_salary_perc
+
         # variables from get_opponent_matchup()
         self.opponent = p.opponent
         self.opp_excel = p.opp_excel
@@ -59,6 +67,10 @@ class Player:
 
     def __repr__(self):
         return "Player({}, {})".format(self.name, self.rank)
+
+    def set_fdraft_fields(self, fdraft_salary, fdraft_salary_perc):
+        self.fdraft_salary = fdraft_salary
+        self.fdraft_salary_perc = fdraft_salary_perc
 
     def set_vegas_fields(self, overunder, line, projected):
         self.overunder = overunder

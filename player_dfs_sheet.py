@@ -1,3 +1,4 @@
+import csv
 import json
 import re
 import requests
@@ -139,6 +140,34 @@ def fpros_ecr(wb, position):
 
         # return dict(zip(header, new_cols))
         return ls
+
+
+def pull_data(filename, ENDPOINT):
+    """Either pull file from API or from file."""
+    data = None
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
+
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
+
+        # store response
+        data = r.json()
+
+        # dump json to file for future use to avoid multiple API pulls
+        with open(filename, 'w') as outfile:
+            json.dump(data, outfile)
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load json from file
+        with open(filename, 'r') as json_file:
+            data = json.load(json_file)
+
+    return data
 
 
 def get_nfl_snaps(wb):
@@ -641,8 +670,71 @@ def find_name_in_ecr(ecr_pos_list, name):
             # print("Found {}!".format(name))
             # rank, wsis, dumb_name, matchup, best, worse, avg, std_dev = item
             return item
-
     return False
+
+
+def read_fantasy_draft_csv(filename):
+    team_map = {
+        'Atlanta Falcons': 'ATL',
+        'Indianapolis Colts': 'IND',
+        'San Francisco 49ers': 'SF',
+        'Oakland Raiders': 'OAK',
+        'Tampa Bay Buccaneers': 'TB',
+        'Kansas City Chiefs': 'KC',
+        'New York Giants': 'NYG',
+        'Cincinnati Bengals': 'CIN',
+        'Pittsburgh Steelers': 'PIT',
+        'Denver Broncos': 'DEN',
+        'Cleveland Browns': 'CLE',
+        'New England Patriots': 'NE',
+        'Minnesota Vikings': 'MIN',
+        'Miami Dolphins': 'MIA',
+        'Green Bay Packers': 'GB',
+        'Los Angeles Chargers': 'LAC',
+        'New Orleans Saints': 'NO',
+        'New York Jets': 'NYJ',
+        'Arizona Cardinals': 'ARI',
+        'Buffalo Bills': 'BUF',
+        'Houston Texans': 'HOU',
+        'Detroit Lions': 'DET',
+        'Jacksonville Jaguars': 'JAX',
+        'Los Angeles Rams': 'LAR',
+        'Seattle Seahawks': 'SEA',
+        'Philadelphia Eagles': 'PHI',
+        'Carolina Panthers': 'CAR',
+        'Tennessee Titans': 'TEN',
+        'Washington Redskins': 'WAS',
+        'Dallas Cowboys': 'DAL',
+        'Chicago Bears': 'CHI',
+        'Baltimore Ravens': 'BAL'
+    }
+
+    with open(filename, 'r') as f:
+        reader = csv.reader(f)
+
+        # store header row (and strip extra spaces)
+        headers = [header.lower().strip() for header in next(reader)]
+        headers.append('salary_perc')
+
+        # fill dictionary to return
+        dictionary = {}
+        for row in reader:
+            if row[0] == 'DST':
+                print("storing {} instead of {}".format(team_map.get(row[1], None), row[1]))
+                # map full team name to team abbv
+                row[1] = team_map.get(row[1], None)
+            # remove periods from name
+            row[1] = row[1].replace('.', '')
+            # remove Jr. and III etc
+            row[1] = ' '.join(row[1].split(' ')[:2])
+            # store salary without $ or ,
+            row[5] = row[5][1:].replace(',', '')
+            # calculate salary percentage
+            salary_perc = "{0:0.1%}".format(float(row[5]) / 100000)
+            row.append(salary_perc)
+            dictionary[row[1]] = {key: value for key, value in zip(headers, row)}
+
+        return dictionary
 
 
 def main():
@@ -673,6 +765,12 @@ def main():
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
         ecr_pos_dict[position] = fpros_ecr(wb, position)
 
+    fdraft_csv = 'FDraft_week7_full.csv'
+    if path.exists(fdraft_csv):
+        fdraft_dict = read_fantasy_draft_csv(fdraft_csv)
+    else:
+        fdraft_dict = None
+
     # pull data
     vegas_dict = get_vegas_rg(wb)
     dvoa_dict = get_dvoa_rankings(wb)
@@ -693,9 +791,8 @@ def main():
 
             fields = line.rstrip().split(',')
 
-            # check if player has ECR
-            position = fields[0]
-            name = fields[2]
+            # store each variable from list
+            position, name_id, name, id, roster_pos, salary, game_info, team_abbv, average_ppg = fields
 
             # 'fix' name to remove extra stuff like Jr or III (Todd Gurley II for example)
             name = ' '.join(name.split(' ')[:2])
@@ -704,8 +801,6 @@ def main():
 
             if position == 'DST':
                 name = fields[7]
-
-            position, name_id, name, id, roster_pos, salary, game_info, team_abbv, average_ppg = fields
 
             # print("opp: {} opp_excel: {}".format(opp, opp_excel))
             # if player does not exist, skip
@@ -719,11 +814,16 @@ def main():
                 ecr_matchup = ecr_item[3]
                 # create Player class for position
                 p = Player(name, position, team_abbv, salary, game_info, average_ppg, ecr_matchup, ecr_rank)
-                # set vegas fields based on team abbv (key)
-                p.set_vegas_fields(vegas_dict[team_abbv]['overunder'], vegas_dict[team_abbv]['line'], vegas_dict[team_abbv]['projected'])
 
-                # local variable for dvoa_dict
+                if fdraft_dict:
+                    p.set_fdraft_fields(fdraft_dict[name]['salary'], fdraft_dict[name]['salary_perc'])
+                # local variable for dicts
                 dvoa_opponent = dvoa_dict[p.opponent]
+                # local variable for player's team
+                vegas_player_team = vegas_dict[team_abbv]
+
+                # set vegas fields based on team abbv (key)
+                p.set_vegas_fields(vegas_player_team['overunder'], vegas_player_team['line'], vegas_player_team['projected'])
 
                 if position == 'QB':
                     qb = QB(p)
@@ -755,8 +855,9 @@ def main():
     for i, player in enumerate(player_list):
         if player.position == 'TE':
             print(player)
-            print(player.te_rank)
-            print(player.pass_def_rank)
+            print(player.fdraft_salary)
+            print(player.fdraft_salary_perc)
+
         # print("run_dvoa: {} pass_dvoa: {}".format(rb.run_dvoa, rb.rb_pass_dvoa))
         # print("[{}] ou: {} line: {} proj: {}".format(rb.team_abbv, rb.overunder, rb.line, rb.projected))
 
