@@ -664,6 +664,79 @@ def get_dvoa_recv_rankings(wb, soup_table, title, dict_team_rankings):
     return dict_team_rankings
 
 
+def get_line_rankings(wb):
+    dir = 'sources'
+    # create empty dict to return
+    dictionary = {}
+    # dictionary['dl'] = {}
+    for line in ['ol', 'dl']:
+        ENDPOINT = "https://www.footballoutsiders.com/stats/{0}".format(line)
+        fn = "html_{0}.html".format(line)
+        filename = path.join(dir, fn)
+
+        # create dict for run and pass stats
+        dictionary[line] = {}
+        dictionary[line]['run'] = {}
+        dictionary[line]['pass'] = {}
+        # print(dictionary[line]['run'])
+
+        # pull data
+        soup = pull_soup_data(filename, ENDPOINT)
+
+        # find all tables (2) in the html
+        table = soup.findAll('table')
+
+        if table:
+            # create worksheet
+            if line == 'ol':
+                title = 'OLINE'
+            elif line == 'dl':
+                title = 'DLINE'
+            wb.create_sheet(title=title)
+
+            # store table
+            line_stats = table[0]
+            # find header
+            table_header = line_stats.find('thead')
+            # there is one header row
+            header_row = table_header.find('tr')
+            # loop through header columns and append to worksheet
+            header_cols = header_row.find_all('th')
+            header = [ele.text.strip() for ele in header_cols]
+            wb[title].append(header)
+
+            # find the rest of the table header_rows
+            rows = line_stats.find_all('tr')
+            for row in rows:
+                cols = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols]
+                if cols:
+
+                    # pop 'team_abbv' for dict key
+                    run_key = cols.pop(1)
+
+                    # pop 'team_abbv' for pass protection
+                    pass_key = cols.pop(11)
+
+                    run_key_names = ['rank', 'adj_line_yds', 'rb_yds', 'power_succ_perc', 'power_rank',
+                                     'stuff_perc', 'stuff_rank', '2nd_lvl_yds', '2nd_lvl_rank',
+                                     'open_field_yds', 'open_field_rank']
+
+                    pass_key_names = ['rank', 'sacks', 'adj_sack_rate']
+                    # print(key)
+
+                    # map o-line to 'run' key
+                    dictionary[line]['run'][run_key] = dict(zip(run_key_names, cols))
+                    # map d-line to 'pass' key
+                    dictionary[line]['pass'][pass_key] = dict(zip(pass_key_names, cols))
+                    # example
+                    # dictionary['ol']['run']['LAR']['adj_line_yds'] = 6.969
+                    # dictionary['dl']['pass']['MIA']['adj_sack_rate'] = 4.5%
+
+                    wb[title].append(cols)
+    return dictionary
+
+
 def find_name_in_ecr(ecr_pos_list, name):
     for item in ecr_pos_list:
         if any(name in s for s in item):
@@ -720,7 +793,6 @@ def read_fantasy_draft_csv(filename):
         dictionary = {}
         for row in reader:
             if row[0] == 'DST':
-                print("storing {} instead of {}".format(team_map.get(row[1], None), row[1]))
                 # map full team name to team abbv
                 row[1] = team_map.get(row[1], None)
             # remove periods from name
@@ -774,6 +846,7 @@ def main():
     # pull data
     vegas_dict = get_vegas_rg(wb)
     dvoa_dict = get_dvoa_rankings(wb)
+    line_dict = get_line_rankings(wb)
 
     # print(dvoa_dict['CHI'])
 
@@ -821,18 +894,23 @@ def main():
                 dvoa_opponent = dvoa_dict[p.opponent]
                 # local variable for player's team
                 vegas_player_team = vegas_dict[team_abbv]
-
                 # set vegas fields based on team abbv (key)
                 p.set_vegas_fields(vegas_player_team['overunder'], vegas_player_team['line'], vegas_player_team['projected'])
+                #
 
                 if position == 'QB':
                     qb = QB(p)
-                    # set vegas fields based on team abbv (key)
+                    qb.set_sack_fields(line_dict['dl']['pass'][team_abbv]['adj_sack_rate'], line_dict['dl']['pass'][p.opponent]['adj_sack_rate'])
+                    print(qb.line_sack_rate)
+                    print(qb.opponent_sack_rate)
                     player_list.append(qb)
                 elif position == 'RB':
                     rb = RB(p)
                     # set position-specific dvoa fields
                     rb.set_dvoa_fields(dvoa_opponent['rush_def_rank'], dvoa_opponent['rb_rank'])
+
+                    # set oline/opponent dline stats for adjusted line yards
+                    rb.set_line_fields(line_dict['ol']['run'][team_abbv]['adj_line_yds'], line_dict['dl']['run'][p.opponent]['adj_line_yds'])
                     player_list.append(rb)
                 elif position == 'WR':
                     wr = WR(p)
@@ -853,10 +931,10 @@ def main():
     #     print("k: {}".format(k))
     #     print("v: {}".format(v))
     for i, player in enumerate(player_list):
-        if player.position == 'TE':
+        if player.position == 'QB':
             print(player)
-            print(player.fdraft_salary)
-            print(player.fdraft_salary_perc)
+            # print(player.fdraft_salary)
+            # print(player.fdraft_salary_perc)
 
         # print("run_dvoa: {} pass_dvoa: {}".format(rb.run_dvoa, rb.rb_pass_dvoa))
         # print("[{}] ou: {} line: {} proj: {}".format(rb.team_abbv, rb.overunder, rb.line, rb.projected))
