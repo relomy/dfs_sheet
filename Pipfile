@@ -8,6 +8,7 @@ openpyxl = "*"
 requests = "*"
 "bs4" = "*"
 "html5lib" = "*"
+"autopep8" = "*"
 
 [dev-packages]
 

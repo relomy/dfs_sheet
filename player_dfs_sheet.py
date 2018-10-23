@@ -485,7 +485,8 @@ def get_vegas_rg(wb):
 
     # create worksheet
     title = 'VEGAS'
-    header = ['Time', 'Team', 'Opponent', 'Line', 'MoneyLine', 'Over/Under', 'Projected Points', 'Projected Points Change']
+    header = ['Time', 'Team', 'Opponent', 'Line', 'MoneyLine',
+              'Over/Under', 'Projected Points', 'Projected Points Change']
     create_sheet_header(wb, title, header)
 
     # pull data
@@ -737,6 +738,104 @@ def get_line_rankings(wb):
     return dictionary
 
 
+def qb_map(key):
+    fo_qb_names = {
+        'D.Brees': 'Drew Brees',
+        'P.Mahomes': 'Patrick Mahomes',
+        'J.Goff': 'Jared Goff',
+        'P.Rivers': 'Phillip Rivers',
+        'M.Ryan': 'Matt Ryan',
+        'R.Fitzpatrick': 'Ryan Fitzpatrick',
+        'A.Dalton': 'Andy Dalton',
+        'J.Flacco': 'Joe Flacco',
+        'A.Rodgers': 'Aaron Rodgers',
+        'B.Roethlisberger': 'Ben Roethlisberger',
+        'K.Cousins': 'Kirk Cousins',
+        'T.Brady': 'Tom Brady',
+        'D.Carr': 'Derek Carr',
+        'M.Trubisky': 'Mitch Trubisky',
+        'D.Watson': 'Deshaun Watson',
+        'C.Newton': 'Cam Newton',
+        'C.Wentz': 'Carson Wentz',
+        'R.Wilson': 'Russell Wilson',
+        'M.Stafford': 'Matthew Stafford',
+        'S.Darnold': 'Sam Darnold',
+        'A.Luck': 'Andrew Luck',
+        'C.Keenum': 'Case Keenum',
+        'C.J.Beathard': 'CJ Beathard',
+        'A.Smith': 'Alex Smith',
+        'J.Rosen': 'Josh Rosen',
+        'B.Bortles': 'Blake Bortles',
+        'E.Manning': 'Eli Manning',
+        'J.Garoppolo': 'Jimmy Garoppolo',
+        'R.Tannehill': 'Ryan Tannehill',
+        'D.Prescott': 'Dak Prescott',
+        'M.Mariota': 'Marcus Mariota',
+        'B.Mayfield': 'Baker Mayfield',
+        'T.Taylor': 'Tyrod Taylor',
+        'J.Allen': 'Josh Allen'
+    }
+    return fo_qb_names.get(key, None)
+
+
+def get_qb_stats_FO(wb):
+    ENDPOINT = 'https://www.footballoutsiders.com/stats/qb'
+    fn = 'html_qb.html'
+    dir = 'sources'
+    filename = path.join(dir, fn)
+
+    # pull data
+    soup = pull_soup_data(filename, ENDPOINT)
+
+    # find all tables (3) in the html
+    table = soup.findAll('table')
+
+    if table:
+        # create worksheet
+        title = 'QB_STATS'
+        wb.create_sheet(title=title)
+
+        dictionary = {}
+        for i, t in enumerate(table):
+            qb_stats = t
+
+            # find header
+            table_header = t.find('thead')
+            # there is one header row
+            header_row = table_header.find('tr')
+            # loop through header columns and append to worksheet
+            header_cols = header_row.find_all('th')
+            header = [ele.text.strip() for ele in header_cols]
+            wb[title].append(header)
+
+            # find the rest of the table header_rows
+            rows = t.find_all('tr')
+            for row in rows:
+                cols = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols]
+                if cols:
+                    # pop 'name' for dict key
+                    key = cols.pop(0)
+
+                    if i == 0:
+                        key_names = ['name', 'team', 'dyar', 'dyar_rank', 'yar', 'yar_rank', 'dvoa', 'dvoa_rank', 'voa', 'qbr',
+                                     'qbr_rank', 'pass_atts', 'pass_yds', 'eyds', 'tds', 'fk', 'fl', 'int', 'c_perc', 'dpi', 'alex']
+                    elif i == 1:
+                        key_names = ['name', 'team', 'dyar', 'dvoa', 'dvoa_rank', 'voa', 'qbr',
+                                     'qbr_rank', 'pass_atts', 'pass_yds', 'eyds', 'tds', 'fk', 'fl', 'int', 'c_perc', 'dpi', 'alex']
+                    elif i == 2:
+                        key_names = ['name', 'team', 'rush_dyar', 'rush_dyar_rank', 'rush_yar', 'rush_yar_rank', 'rush_dvoa', 'rush_dvoa_rank',
+                                     'rush_voa', 'rush_atts', 'rush_yds', 'rush_eyds', 'rush_tds', 'fumbles']
+
+                    # print(key)
+                    # map key_names to cols
+                    player_name = qb_map(key)
+                    dictionary[player_name] = dict(zip(key_names, cols))
+                    print(dictionary[player_name])
+
+                    wb[title].append(cols)
+
+
 def find_name_in_ecr(ecr_pos_list, name):
     for item in ecr_pos_list:
         if any(name in s for s in item):
@@ -831,6 +930,7 @@ def main():
 
     # pull positional stats from fantasypros.com
     # for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+    get_qb_stats_FO(wb)
 
     ecr_pos_dict = {}
     # for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
@@ -886,21 +986,24 @@ def main():
                 ecr_rank = ecr_item[0]
                 ecr_matchup = ecr_item[3]
                 # create Player class for position
-                p = Player(name, position, team_abbv, salary, game_info, average_ppg, ecr_matchup, ecr_rank)
+                p = Player(name, position, team_abbv, salary, game_info,
+                           average_ppg, ecr_matchup, ecr_rank)
 
                 if fdraft_dict:
-                    p.set_fdraft_fields(fdraft_dict[name]['salary'], fdraft_dict[name]['salary_perc'])
+                    p.set_fdraft_fields(fdraft_dict[name]['salary'],
+                                        fdraft_dict[name]['salary_perc'])
                 # local variable for dicts
                 dvoa_opponent = dvoa_dict[p.opponent]
                 # local variable for player's team
                 vegas_player_team = vegas_dict[team_abbv]
                 # set vegas fields based on team abbv (key)
-                p.set_vegas_fields(vegas_player_team['overunder'], vegas_player_team['line'], vegas_player_team['projected'])
-                #
+                p.set_vegas_fields(
+                    vegas_player_team['overunder'], vegas_player_team['line'], vegas_player_team['projected'])
 
                 if position == 'QB':
                     qb = QB(p)
-                    qb.set_sack_fields(line_dict['dl']['pass'][team_abbv]['adj_sack_rate'], line_dict['dl']['pass'][p.opponent]['adj_sack_rate'])
+                    qb.set_sack_fields(line_dict['dl']['pass'][team_abbv]['adj_sack_rate'],
+                                       line_dict['dl']['pass'][p.opponent]['adj_sack_rate'])
                     print(qb.line_sack_rate)
                     print(qb.opponent_sack_rate)
                     player_list.append(qb)
@@ -910,12 +1013,14 @@ def main():
                     rb.set_dvoa_fields(dvoa_opponent['rush_def_rank'], dvoa_opponent['rb_rank'])
 
                     # set oline/opponent dline stats for adjusted line yards
-                    rb.set_line_fields(line_dict['ol']['run'][team_abbv]['adj_line_yds'], line_dict['dl']['run'][p.opponent]['adj_line_yds'])
+                    rb.set_line_fields(line_dict['ol']['run'][team_abbv]['adj_line_yds'],
+                                       line_dict['dl']['run'][p.opponent]['adj_line_yds'])
                     player_list.append(rb)
                 elif position == 'WR':
                     wr = WR(p)
                     # set position-specific dvoa fields
-                    wr.set_dvoa_fields(dvoa_opponent['pass_def_rank'], dvoa_opponent['rb_rank'], dvoa_opponent['rb_rank'])
+                    wr.set_dvoa_fields(dvoa_opponent['pass_def_rank'],
+                                       dvoa_opponent['rb_rank'], dvoa_opponent['rb_rank'])
                     player_list.append(wr)
                 elif position == 'TE':
                     te = TE(p)

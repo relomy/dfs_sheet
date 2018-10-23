@@ -23,7 +23,8 @@ class Player:
         self.matchup = matchup
         self.rank = rank
 
-        self.opponent, self.opp_excel, self.home_team = self.get_opponent_matchup(game_info, team_abbv)
+        self.opponent, self.opp_excel, self.home_team = self.get_opponent_matchup(
+            game_info, team_abbv)
 
         # calculate salary percent
         self.salary_percent = "{0:.1%}".format(float(salary) / 50000)
