@@ -40,10 +40,10 @@ def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment
         cell.border = cell.border + bottom
 
     for row in rows:
-        l = row[0]
-        r = row[-1]
-        l.border = l.border + left
-        r.border = r.border + right
+        lcell = row[0]
+        rcell = row[-1]
+        lcell.border = lcell.border + left
+        rcell.border = rcell.border + right
         if fill:
             for c in row:
                 c.fill = fill
@@ -83,9 +83,11 @@ def pull_soup_data(filename, ENDPOINT):
 
 def fpros_ecr(wb, position):
     if position == 'QB' or position == 'DST':
-        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/{}.php'.format(position.lower())
+        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/{}.php'.format(
+            position.lower())
     else:
-        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/ppr-{}.php'.format(position.lower())
+        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/ppr-{}.php'.format(
+            position.lower())
 
     fn = 'ecr_{}.html'.format(position)
     dir = 'sources'
@@ -170,9 +172,28 @@ def pull_data(filename, ENDPOINT):
     return data
 
 
-def get_nfl_snaps(wb):
-    """Retrieve snaps from lineups.com API."""
-    ENDPOINT = 'https://api.lineups.com/nfl/fetch/snaps/2018/OFF'
+def massage_name(name):
+    # remove periods from name
+    name = name.replace('.', '')
+    # remove Jr. and III etc
+    name = ' '.join(name.split(' ')[:2])
+    # special fix for Juju Smith-Schuster
+    name = name.replace('Juju', 'JuJu')
+
+    return name
+
+
+def get_lineups_player_stats():
+    dictionary = {}
+    dictionary['snaps'] = get_lineups_nfl_snaps()
+    dictionary['targets'] = get_lineups_nfl_targets()
+    dictionary['receptions'] = get_lineups_nfl_receptions()
+    dictionary['rush_atts'] = get_lineups_nfl_rush_atts()
+    return dictionary
+
+
+def get_lineups_nfl_snaps():
+    ENDPOINT = 'https://api.lineups.com/nfl/fetch/snaps/2018/QB'
     fn = 'nfl_snaps.json'
     dir = 'sources'
     filename = path.join(dir, fn)
@@ -183,42 +204,16 @@ def get_nfl_snaps(wb):
     if data is None:
         raise Exception('Failed to pull data from API or file.')
 
-    player_data = data['data']
+    # create dictionary and set key to player's full name
+    # dictionary = {}
+    # for player in data['data']:
+    #     dictionary[player['full_name']] = player
 
-    # create worksheet
-    title = 'SNAPS'
-    header = ['name', 'position', 'team', 'season average', 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
-              'week7', 'week8', 'week9', 'week10', 'week11', 'week12', 'week13', 'week14',
-              'week15', 'week16']
-    create_sheet_header(wb, title, header)
-
-    for d in player_data:
-        name = d['full_name']
-        position = d['position']
-        team = d['team']
-        weeks = d['snap_percentage_by_week']  # list
-        season_average = d['season_snap_percent']
-
-        # we only care about RB/TE/WR
-        if position not in ['RB', 'TE', 'WR']:
-            continue
-
-        # remove '.' from name
-        name = name.replace('.', '')
-
-        # convert weeks dict to list
-        all_weeks = conv_weeks_to_padded_list(weeks)
-
-        # add three lists together
-        pre_weeks = [name, position, team, season_average]
-        # post_weeks = [targets, average, recv_touchdowns]
-        ls = pre_weeks + all_weeks
-
-        wb[title].append(ls)
+    # return dict comprehension for code above
+    return {massage_name(x['full_name']): x for x in data['data']}
 
 
-def get_nfl_targets(wb):
-    """Retrieve targets from lineups.com API."""
+def get_lineups_nfl_targets():
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/targets/2018/OFF'
     fn = 'nfl_targets.json'
     dir = 'sources'
@@ -227,53 +222,14 @@ def get_nfl_targets(wb):
     # if file doesn't exist, let's pull it. otherwise - use the file.
     data = pull_data(filename, ENDPOINT)
 
-    player_data = data['data']
+    if data is None:
+        raise Exception('Failed to pull data from API or file.')
 
-    # create worksheet
-    title = 'TARGETS'
-    header = ['name', 'position', 'team', 'season average', 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
-              'week7', 'week8', 'week9', 'week10', 'week11', 'week12', 'week13', 'week14',
-              'week15', 'week16', 'targets', 'recv touchdowns']
-    create_sheet_header(wb, title, header)
-
-    for d in player_data:
-        # TODO target percentage? it's by week as well
-        name = d['full_name']
-        position = d['position']
-        team = d['team']
-        targets = d['total']
-        weeks = d['weeks']  # dict
-        season_average = d['average']
-        recv_touchdowns = d['receiving_touchdowns']
-        catch_percentage = d['catch_percentage']
-        season_target_percent = d['season_target_percent']
-
-        # we only care about RB/TE/WR
-        if position not in ['RB', 'TE', 'WR']:
-            continue
-
-        # remove '.' from name
-        name = name.replace('.', '')
-
-        # convert weeks dict to list
-        all_weeks = conv_weeks_to_padded_list(weeks)
-
-        # add three lists together
-        pre_weeks = [name, position, team, season_average]
-        post_weeks = [targets, recv_touchdowns]
-        ls = pre_weeks + all_weeks + post_weeks
-
-        # insert all_weeks list into ls
-        # ls = [name, position, rating, team, receptions, average, touchdowns]
-        # print("trying to insert: ls[2:{}]".format(len(all_weeks)))
-        # ls[4:len(all_weeks)-1] = all_weeks
-        # print(ls)
-
-        wb[title].append(ls)
+    # create dictionary and set key to player's full name
+    return {massage_name(x['full_name']): x for x in data['data']}
 
 
-def get_nfl_receptions(wb):
-    """Retrieve receptions from lineups.com API."""
+def get_lineups_nfl_receptions():
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/receptions/2018/OFF'
     fn = 'nfl_receptions.json'
     dir = 'sources'
@@ -282,45 +238,14 @@ def get_nfl_receptions(wb):
     # if file doesn't exist, let's pull it. otherwise - use the file.
     data = pull_data(filename, ENDPOINT)
 
-    # we just want player data
-    player_data = data['data']
+    if data is None:
+        raise Exception('Failed to pull data from API or file.')
 
-    # create worksheet
-    title = 'RECEPTIONS'
-    header = ['name', 'position', 'team', 'season average', 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
-              'week7', 'week8', 'week9', 'week10', 'week11', 'week12', 'week13', 'week14',
-              'week15', 'week16', 'receptions', 'touchdowns']
-    create_sheet_header(wb, title, header)
-
-    for d in player_data:
-        name = d['name']
-        position = d['position']
-        team = d['team']
-        receptions = d['receptions']
-        weeks = d['weeks']  # dict
-        season_average = d['average']
-        touchdowns = d['touchdowns']
-
-        # we only care about RB/TE/WR
-        if position not in ['RB', 'TE', 'WR']:
-            continue
-
-        # remove '.' from name
-        name = name.replace('.', '')
-
-        # convert weeks dict to list
-        all_weeks = conv_weeks_to_padded_list(weeks)
-
-        # add three lists together
-        pre_weeks = [name, position, team, season_average]
-        post_weeks = [receptions, touchdowns]
-        ls = pre_weeks + all_weeks + post_weeks
-
-        wb[title].append(ls)
+    # create dictionary and set key to player's full name
+    return {massage_name(x['name']): x for x in data['data']}
 
 
-def get_nfl_rush_atts(wb):
-    """Retrieve receptions from lineups.com API."""
+def get_lineups_nfl_rush_atts():
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/rush/2018/OFF'
     fn = 'nfl_rush_atts.json'
     dir = 'sources'
@@ -329,42 +254,11 @@ def get_nfl_rush_atts(wb):
     # if file doesn't exist, let's pull it. otherwise - use the file.
     data = pull_data(filename, ENDPOINT)
 
-    # we just want player data
-    player_data = data['data']
+    if data is None:
+        raise Exception('Failed to pull data from API or file.')
 
-    # create worksheet
-    title = 'RUSH_ATTS'
-    header = ['name', 'position', 'team', 'season average', 'week1', 'week2', 'week3', 'week4', 'week5', 'week6',
-              'week7', 'week8', 'week9', 'week10', 'week11', 'week12', 'week13', 'week14',
-              'week15', 'week16', 'attempts', 'touchdowns']
-    create_sheet_header(wb, title, header)
-
-    for d in player_data:
-        # TODO rushing_attempt_percentage_by_week
-        name = d['name']
-        position = d['position']
-        team = d['team']
-        attempts = d['total']
-        weeks = d['weeks']  # dict
-        season_average = d['average']
-        touchdowns = d['touchdowns']
-
-        # we only care about QB/RB/WR
-        if position not in ['QB', 'RB', 'WR']:
-            continue
-
-        # remove '.' from name
-        name = name.replace('.', '')
-
-        # convert weeks dict to list
-        all_weeks = conv_weeks_to_padded_list(weeks)
-
-        # add three lists together
-        pre_weeks = [name, position, team, season_average]
-        post_weeks = [attempts, touchdowns]
-        ls = pre_weeks + all_weeks + post_weeks
-
-        wb[title].append(ls)
+    # create dictionary and set key to player's full name
+    return {massage_name(x['name']): x for x in data['data']}
 
 
 def get_nfl_def_stats(wb):
@@ -387,7 +281,7 @@ def get_nfl_def_stats(wb):
     # create worksheet
     title = 'DEF_STATS'
     header = ['team abbv', 'team', 'pass_att', 'pass_yd_per_att', 'pass_compls', 'pass_yd_per_compl',
-              'pass_yds', 'pass_tds', 'pass_td_per_att', 'compl_perc']
+              'pass_yds', 'pass_tds', 'compl_perc', 'pass_td_per_att']
     create_sheet_header(wb, title, header)
 
     team_map = {
@@ -424,7 +318,7 @@ def get_nfl_def_stats(wb):
         'Chicago Bears': 'CHI',
         'Baltimore Ravens': 'BAL'
     }
-
+    dictionary = {}
     for d in player_data:
         # TODO rushing_attempt_percentage_by_week
         team = d['team']
@@ -447,6 +341,9 @@ def get_nfl_def_stats(wb):
               pass_yds, pass_tds, compl_perc, pass_td_per_att]
 
         wb[title].append(ls)
+
+        dictionary[team_abbv] = dict(zip(header, ls))
+    return dictionary
 
 
 def conv_weeks_to_padded_list(weeks):
@@ -497,7 +394,8 @@ def get_vegas_rg(wb):
 
     js_vegas_data = script[11].string
 
-    # replace dumb names
+    # replace two-letter abbvs
+    js_vegas_data = js_vegas_data.replace('GBP', 'GB')
     js_vegas_data = js_vegas_data.replace('JAC', 'JAX')
     js_vegas_data = js_vegas_data.replace('KCC', 'KC')
     js_vegas_data = js_vegas_data.replace('NEP', 'NE')
@@ -510,10 +408,10 @@ def get_vegas_rg(wb):
     json_str = pattern.search(js_vegas_data).group(1)
     vegas_json = json.loads(json_str)
 
-    return_dict = {}
+    dictionary = {}
     # iterate through json
     for matchup in vegas_json:
-        return_dict[matchup['team']] = {
+        dictionary[matchup['team']] = {
             'display_time': matchup['time']['display'],
             'opponent': matchup['opponent'],
             'line': matchup['line'],
@@ -532,7 +430,7 @@ def get_vegas_rg(wb):
             matchup['projected'],
             matchup['projectedchange']['value']
         ])
-    return return_dict
+    return dictionary
 
 
 def get_dvoa_rankings(wb):
@@ -554,7 +452,8 @@ def get_dvoa_rankings(wb):
 
         dict_team_rankings = get_dvoa_team_rankings(wb, table[0], title)
         # separate function for second table
-        dict_dvoa_rankings_all = get_dvoa_recv_rankings(wb, table[1], title, dict_team_rankings)
+        dict_dvoa_rankings_all = get_dvoa_recv_rankings(
+            wb, table[1], title, dict_team_rankings)
 
         return dict_dvoa_rankings_all
 
@@ -753,11 +652,12 @@ def qb_map(key):
         'K.Cousins': 'Kirk Cousins',
         'T.Brady': 'Tom Brady',
         'D.Carr': 'Derek Carr',
-        'M.Trubisky': 'Mitch Trubisky',
+        'M.Trubisky': 'Mitchell Trubisky',
         'D.Watson': 'Deshaun Watson',
         'C.Newton': 'Cam Newton',
         'C.Wentz': 'Carson Wentz',
         'R.Wilson': 'Russell Wilson',
+        'J.Winston': 'Jameis Winston',
         'M.Stafford': 'Matthew Stafford',
         'S.Darnold': 'Sam Darnold',
         'A.Luck': 'Andrew Luck',
@@ -773,7 +673,16 @@ def qb_map(key):
         'M.Mariota': 'Marcus Mariota',
         'B.Mayfield': 'Baker Mayfield',
         'T.Taylor': 'Tyrod Taylor',
-        'J.Allen': 'Josh Allen'
+        'J.Allen': 'Josh Allen',
+        'B.Osweiler': 'Brock Osweiler',
+        'B.Gabbert': 'Blaine Gabbert',
+        'C.Kessley': 'Cody Kessler',
+        'D.Enderson': 'Derek Anderson',
+        'N.Foles': 'Nick Foles',
+        'S.Bradford': 'Sam Bradford',
+        'N.Peterman': 'Nathan Peterman',
+        'T.Taylor': 'Tyrod Taylor',
+        'L.Jackson': 'Lamar Jackson'
     }
     return fo_qb_names.get(key, None)
 
@@ -797,8 +706,6 @@ def get_qb_stats_FO(wb):
 
         dictionary = {}
         for i, t in enumerate(table):
-            qb_stats = t
-
             # find header
             table_header = t.find('thead')
             # there is one header row
@@ -817,23 +724,28 @@ def get_qb_stats_FO(wb):
                     # pop 'name' for dict key
                     key = cols.pop(0)
 
+                    # i only create this list because Lamar Jackson has no pass_dyar but he has rushing stats
+                    main_fields = ['team', 'pass_dyar', 'dyar_rank', 'yar', 'yar_rank', 'pass_dvoa', 'pass_dvoa_rank', 'voa', 'qbr',
+                                   'qbr_rank', 'pass_atts', 'pass_yds', 'eyds', 'tds', 'fk', 'fl', 'int', 'c_perc', 'dpi', 'alex']
                     if i == 0:
-                        key_names = ['name', 'team', 'dyar', 'dyar_rank', 'yar', 'yar_rank', 'dvoa', 'dvoa_rank', 'voa', 'qbr',
-                                     'qbr_rank', 'pass_atts', 'pass_yds', 'eyds', 'tds', 'fk', 'fl', 'int', 'c_perc', 'dpi', 'alex']
+                        key_names = main_fields
                     elif i == 1:
-                        key_names = ['name', 'team', 'dyar', 'dvoa', 'dvoa_rank', 'voa', 'qbr',
+                        key_names = ['team', 'pass_dyar', 'pass_dvoa', 'pass_dvoa_rank', 'voa', 'qbr',
                                      'qbr_rank', 'pass_atts', 'pass_yds', 'eyds', 'tds', 'fk', 'fl', 'int', 'c_perc', 'dpi', 'alex']
                     elif i == 2:
-                        key_names = ['name', 'team', 'rush_dyar', 'rush_dyar_rank', 'rush_yar', 'rush_yar_rank', 'rush_dvoa', 'rush_dvoa_rank',
+                        key_names = ['team', 'rush_dyar', 'rush_dyar_rank', 'rush_yar', 'rush_yar_rank', 'rush_dvoa', 'rush_dvoa_rank',
                                      'rush_voa', 'rush_atts', 'rush_yds', 'rush_eyds', 'rush_tds', 'fumbles']
 
                     # print(key)
                     # map key_names to cols
                     player_name = qb_map(key)
-                    dictionary[player_name] = dict(zip(key_names, cols))
-                    print(dictionary[player_name])
+                    # create dictionary if it does not exist
+                    if player_name not in dictionary:
+                        dictionary[player_name] = dict.fromkeys(main_fields, None)
+                    dictionary[player_name].update(dict(zip(key_names, cols)))
 
                     wb[title].append(cols)
+    return dictionary
 
 
 def find_name_in_ecr(ecr_pos_list, name):
@@ -904,12 +816,11 @@ def read_fantasy_draft_csv(filename):
             salary_perc = "{0:0.1%}".format(float(row[5]) / 100000)
             row.append(salary_perc)
             dictionary[row[1]] = {key: value for key, value in zip(headers, row)}
-
         return dictionary
 
 
 def main():
-    fn = 'DKSalaries_week7_full.csv'
+    fn = 'DKSalaries_week8_full.csv'
     dest_filename = 'player_sheet.xlsx'
 
     # create workbook/worksheet
@@ -930,23 +841,30 @@ def main():
 
     # pull positional stats from fantasypros.com
     # for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
-    get_qb_stats_FO(wb)
 
     ecr_pos_dict = {}
     # for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
         ecr_pos_dict[position] = fpros_ecr(wb, position)
 
-    fdraft_csv = 'FDraft_week7_full.csv'
+    fdraft_csv = 'FDraft_week8_full.csv'
     if path.exists(fdraft_csv):
         fdraft_dict = read_fantasy_draft_csv(fdraft_csv)
     else:
         fdraft_dict = None
 
-    # pull data
+    # vegas lines from rotogrinders.com
     vegas_dict = get_vegas_rg(wb)
+    # get snaps, targets, receptions, rush attempts from lineups.com
+    stats_dict = get_lineups_player_stats()
+    # defense stats from lineups.com
+    def_dict = get_nfl_def_stats(wb)
+    # DVOA rankings from footballoutsiders.com
     dvoa_dict = get_dvoa_rankings(wb)
+    # OL/DL rankings from footballoutsiders.com
     line_dict = get_line_rankings(wb)
+    # QB rankings from footballoutsiders.com
+    qb_dict = get_qb_stats_FO(wb)
 
     # print(dvoa_dict['CHI'])
 
@@ -1004,28 +922,48 @@ def main():
                     qb = QB(p)
                     qb.set_sack_fields(line_dict['dl']['pass'][team_abbv]['adj_sack_rate'],
                                        line_dict['dl']['pass'][p.opponent]['adj_sack_rate'])
-                    print(qb.line_sack_rate)
-                    print(qb.opponent_sack_rate)
+                    qb.set_season_fields(
+                        qb_dict[name]['rush_yds'], qb_dict[name]['pass_dyar'], qb_dict[name]['qbr'])
+                    qb.set_matchup_fields(
+                        def_dict[p.opponent]['pass_yd_per_att'], def_dict[p.opponent]['compl_perc'], def_dict[p.opponent]['pass_td_per_att'])
+
                     player_list.append(qb)
                 elif position == 'RB':
                     rb = RB(p)
                     # set position-specific dvoa fields
-                    rb.set_dvoa_fields(dvoa_opponent['rush_def_rank'], dvoa_opponent['rb_rank'])
-
+                    rb.set_dvoa_fields(
+                        dvoa_opponent['rush_def_rank'], dvoa_opponent['rb_rank'])
                     # set oline/opponent dline stats for adjusted line yards
                     rb.set_line_fields(line_dict['ol']['run'][team_abbv]['adj_line_yds'],
                                        line_dict['dl']['run'][p.opponent]['adj_line_yds'])
+                    if name in stats_dict['snaps']:
+                        rb.set_season_fields(stats_dict['snaps'][name]['average'],
+                                             stats_dict['rush_atts'][name]['average'],
+                                             stats_dict['targets'][name]['average'])
+                    else:
+                        print("Could find no SNAPS information on {}".format(name))
                     player_list.append(rb)
                 elif position == 'WR':
                     wr = WR(p)
                     # set position-specific dvoa fields
                     wr.set_dvoa_fields(dvoa_opponent['pass_def_rank'],
                                        dvoa_opponent['rb_rank'], dvoa_opponent['rb_rank'])
+                    # if player is not in snaps, he likely has no other information either
+                    if name in stats_dict['snaps']:
+                        wr.set_season_fields(stats_dict['snaps'][name]['average'],
+                                             stats_dict['targets'][name]['average'],
+                                             stats_dict['receptions'][name]['average'])
+                    else:
+                        print("Could find no SNAPS information on {}".format(name))
                     player_list.append(wr)
                 elif position == 'TE':
                     te = TE(p)
                     # set position-specific dvoa fields
-                    te.set_dvoa_fields(dvoa_opponent['pass_def_rank'], dvoa_opponent['te_rank'])
+                    te.set_dvoa_fields(
+                        dvoa_opponent['pass_def_rank'], dvoa_opponent['te_rank'])
+                    te.set_season_fields(stats_dict['snaps'][name]['average'],
+                                         stats_dict['targets'][name]['average'],
+                                         stats_dict['receptions'][name]['average'])
                     player_list.append(te)
                 elif position == 'DST':
                     dst = DST(p)

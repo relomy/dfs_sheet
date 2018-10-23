@@ -103,9 +103,30 @@ class QB(Player):
         self.line_sack_rate = None
         self.opponent_sack_rate = None
 
+        # season stats
+        self.rush_yds = None
+        self.pass_dyar = None
+        self.qbr = None
+
+        # matchup stats
+        self.opp_yds_att = None
+        self.opp_comp_perc = None
+        self.opp_td_perc = None
+
     def set_sack_fields(self, line_sack_rate, opponent_sack_rate):
         self.line_sack_rate = line_sack_rate
         self.opponent_sack_rate = opponent_sack_rate
+
+    def set_season_fields(self, opp_yds_att, opp_comp_perc, opp_td_perc):
+        self.opp_yds_att = opp_yds_att
+        self.opp_comp_perc = opp_comp_perc
+        self.opp_td_perc = opp_td_perc
+
+    def set_matchup_fields(self, rush_yds, pass_dyar, qbr):
+        self.rush_yds = rush_yds
+        self.pass_dyar = pass_dyar
+        self.qbr = qbr
+    # def set_matchup_fields(self, opp_)
 
     def __repr__(self):
         return("QB({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
@@ -129,9 +150,9 @@ class RB(Player):
         self.season_targets = None
 
         # last week
-        self.week_snap_percent = None
-        self.week_rush_atts = None
-        self.week_targets = None
+        self.last_week_snap_percent = None
+        self.last_week_rush_atts = None
+        self.last_week_targets = None
 
     def set_dvoa_fields(self, run_dvoa, rb_pass_dvoa):
         self.run_dvoa = run_dvoa
@@ -140,6 +161,16 @@ class RB(Player):
     def set_line_fields(self, oline_adj_line_yds, opp_adj_line_yds):
         self.oline_adj_line_yds = oline_adj_line_yds
         self.opp_adj_line_yds = opp_adj_line_yds
+
+    def set_season_fields(self, season_snap_percent, season_rush_atts, season_targets):
+        self.season_snap_percent = season_snap_percent
+        self.season_rush_atts = season_rush_atts
+        self.season_targets = season_targets
+
+    def set_last_week_fields(self, last_week_snap_percent, last_week_rush_atts, last_week_targets):
+        self.last_week_snap_percent = last_week_snap_percent
+        self.last_week_rush_atts = last_week_rush_atts
+        self.last_week_targets = last_week_targets
 
     def __repr__(self):
         return("RB({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
@@ -172,6 +203,16 @@ class WR(Player):
         self.wr1_rank = wr1_rank
         self.wr2_rank = wr2_rank
 
+    def set_season_fields(self, season_snap_percent, season_targets, season_recepts):
+        self.season_snap_percent = season_snap_percent
+        self.season_targets = season_targets
+        self.season_recepts = season_recepts
+
+    def set_last_week_fields(self, last_week_snap_percent, last_week_targets, last_week_recepts):
+        self.last_week_snap_percent = last_week_snap_percent
+        self.last_week_targets = last_week_targets
+        self.last_week_recepts = last_week_recepts
+
     def __repr__(self):
         return("wr({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
 
@@ -182,9 +223,33 @@ class TE(Player):
     def __init__(self, player):
         self.assign(player)
 
+        # matchup
+        self.pass_def_rank = None
+        self.te_rank = None
+
+        # season
+        self.season_snap_percent = None
+        self.season_targets = None
+        self.season_recepts = None
+
+        # last week
+        self.week_snap_percent = None
+        self.week_targets = None
+        self.week_recepts = None
+
     def set_dvoa_fields(self, pass_def_rank, te_rank):
         self.pass_def_rank = pass_def_rank
         self.te_rank = te_rank
+
+    def set_season_fields(self, season_snap_percent, season_targets, season_recepts):
+        self.season_snap_percent = season_snap_percent
+        self.season_targets = season_targets
+        self.season_recepts = season_recepts
+
+    def set_last_week_fields(self, last_week_snap_percent, last_week_targets, last_week_recepts):
+        self.last_week_snap_percent = last_week_snap_percent
+        self.last_week_targets = last_week_targets
+        self.last_week_recepts = last_week_recepts
 
     def __repr__(self):
         return("TE({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))

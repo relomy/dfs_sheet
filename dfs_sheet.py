@@ -427,7 +427,8 @@ def get_vegas_rg(wb):
 
     # create worksheet
     title = 'VEGAS'
-    header = ['Time', 'Team', 'Opponent', 'Line', 'MoneyLine', 'Over/Under', 'Projected Points', 'Projected Points Change']
+    header = ['Time', 'Team', 'Opponent', 'Line', 'MoneyLine',
+              'Over/Under', 'Projected Points', 'Projected Points Change']
     create_sheet_header(wb, title, header)
 
     # pull data
@@ -661,9 +662,11 @@ def get_qb_stats_FO(wb):
 
 def fpros_ecr(wb, position):
     if position == 'QB' or position == 'DST':
-        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/{}.php'.format(position.lower())
+        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/{}.php'.format(
+            position.lower())
     else:
-        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/ppr-{}.php'.format(position.lower())
+        ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/ppr-{}.php'.format(
+            position.lower())
 
     fn = 'ecr_{}.html'.format(position)
     dir = 'sources'
@@ -815,7 +818,8 @@ def position_tab(wb, values, title, fdraft_dict=None):
         for i, field in enumerate(header):
             wb[title].cell(row=append_row, column=i + 1, value=field)
 
-    keys = ['pos', 'name_id', 'name', 'id', 'roster_pos', 'salary', 'matchup', 'abbv', 'avg_ppg']
+    keys = ['pos', 'name_id', 'name', 'id', 'roster_pos',
+            'salary', 'matchup', 'abbv', 'avg_ppg']
     stats_dict = dict(zip(keys, values))
     stats_dict['salary_perc'] = "{0:.1%}".format(float(stats_dict['salary']) / 50000)
 
@@ -847,8 +851,10 @@ def position_tab(wb, values, title, fdraft_dict=None):
         stats_dict['abbv'],
         stats_dict['salary'],
         stats_dict['salary_perc'],
-        bld_excel_formula('VEGAS', '$G$2:$G$29', '$D', append_row, '$B$2:$B$29'),  # implied total
-        bld_excel_formula('VEGAS', '$F$2:$F$29', '$D', append_row, '$B$2:$B$29'),  # over/under
+        bld_excel_formula('VEGAS', '$G$2:$G$29', '$D', append_row,
+                          '$B$2:$B$29'),  # implied total
+        bld_excel_formula('VEGAS', '$F$2:$F$29', '$D',
+                          append_row, '$B$2:$B$29'),  # over/under
         bld_excel_formula('VEGAS', '$D$2:$D$29', '$D', append_row, '$B$2:$B$29'),  # line
     ]
 
@@ -856,25 +862,32 @@ def position_tab(wb, values, title, fdraft_dict=None):
     positional_fields = []
 
     # get max_row from position ECR tab
-    max_row = wb[title + '_ECR'].max_row
+    max_row = wb[title + '_ECR'].max_row + 1
     if title == 'QB':
         positional_fields = [
             # rushing yards
-            bld_excel_formula('QB_STATS', '$K$44:$K$82', '$B', append_row, '$A$44:$A$82', qb_stats=True),
+            bld_excel_formula('QB_STATS', '$K$44:$K$82', '$B',
+                              append_row, '$A$44:$A$82', qb_stats=True),
             # DYAR
-            bld_excel_formula('QB_STATS', '$C$2:$C$42', '$B', append_row, '$A$2:$A$42', qb_stats=True),
+            bld_excel_formula('QB_STATS', '$C$2:$C$42', '$B',
+                              append_row, '$A$2:$A$42', qb_stats=True),
             # QBR
-            bld_excel_formula('QB_STATS', '$J$2:$J$35', '$B', append_row, '$A$2:$A$35', qb_stats=True),
+            bld_excel_formula('QB_STATS', '$J$2:$J$35', '$B',
+                              append_row, '$A$2:$A$35', qb_stats=True),
             # o-line
             bld_excel_formula('OLINE', 'P$2:$P$35', '$D', append_row, '$B$2:$B$33'),
             # d-line
-            bld_excel_formula('DLINE', 'P$2:$P$35', '$C', append_row, '$B$2:$B$33', right=True),
+            bld_excel_formula('DLINE', 'P$2:$P$35', '$C',
+                              append_row, '$B$2:$B$33', right=True),
             # matchup passing_yards_per_attempt
-            bld_excel_formula('DEF_STATS', 'D$2:$D${0}'.format(max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
+            bld_excel_formula('DEF_STATS', 'D$2:$D${0}'.format(
+                max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
             # matchup compl %
-            bld_excel_formula('DEF_STATS', 'I$2:$I${0}'.format(max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
+            bld_excel_formula('DEF_STATS', 'I$2:$I${0}'.format(
+                max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
             # matchup td %
-            bld_excel_formula('DEF_STATS', 'J$2:$J${0}'.format(max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
+            bld_excel_formula('DEF_STATS', 'J$2:$J${0}'.format(
+                max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
             # average PPG
             stats_dict['avg_ppg'],
             # ECR
@@ -882,7 +895,8 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # + / - salary
             '=V{0} - S{0}'.format(append_row),
             # ECR DATA
-            bld_excel_formula('QB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+            bld_excel_formula('QB_ECR', '$A$2:$A${}'.format(max_row),
+                              '$B', append_row, '$C$2:$C${}'.format(max_row)),
             # salary rank (low to high)
             '=RANK(E{0}, $E$3:$E${1},0)'.format(append_row, max_row),
             # fdraft salary
@@ -906,25 +920,32 @@ def position_tab(wb, values, title, fdraft_dict=None):
         positional_fields = [
             # run dvoa
             # 'x',  # for testing bld_excel_formula_2
-            bld_excel_formula('TEAMDEF', 'J$2:$J$33', '$C', append_row, '$B$2:$B$33', right=True),
+            bld_excel_formula('TEAMDEF', 'J$2:$J$33', '$C',
+                              append_row, '$B$2:$B$33', right=True),
             # pass dvoa (vs. RB)
-            bld_excel_formula('TEAMDEF', 'T$37:$T$68', '$C', append_row, '$B$37:$B$68', right=True),
+            bld_excel_formula('TEAMDEF', 'T$37:$T$68', '$C',
+                              append_row, '$B$37:$B$68', right=True),
             # o line
             bld_excel_formula('OLINE', '$C$2:$C$33', '$D', append_row, '$B$2:$B$33'),
             # d line
-            bld_excel_formula('DLINE', '$C$2:$C$33', '$C', append_row, '$B$2:$B$33', right=True),
+            bld_excel_formula('DLINE', '$C$2:$C$33', '$C',
+                              append_row, '$B$2:$B$33', right=True),
             # season snap%
             bld_excel_formula('SNAPS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # season rush atts
-            bld_excel_formula('RUSH_ATTS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+            bld_excel_formula('RUSH_ATTS', '$D$2:$D$449',
+                              '$B', append_row, '$A$2:$A$449'),
             # season targets
             bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # week snap% (week6)
-            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B',
+                              append_row, '$A$2:$A$449', week=True),
             # week rush atts (week 6)
-            bld_excel_formula('RUSH_ATTS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            bld_excel_formula('RUSH_ATTS', '$J$2:$J$449', '$B',
+                              append_row, '$A$2:$A$449', week=True),
             # week targets (week 6)
-            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B',
+                              append_row, '$A$2:$A$449', week=True),
             # average PPG
             stats_dict['avg_ppg'],
             # ECR
@@ -932,34 +953,38 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # +/- rank
             'x',
             # ECR Data
-            bld_excel_formula('RB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+            bld_excel_formula('RB_ECR', '$A$2:$A${}'.format(max_row),
+                              '$B', append_row, '$C$2:$C${}'.format(max_row)),
             # salary rank
             'x',
-            # fdraft salary
-            fdraft_dict[name]['salary'],
-            # fdraft salary perc
-            fdraft_dict[name]['salary_perc'],
         ]
     elif title == 'WR':
         positional_fields = [
             # pass dvoa
-            bld_excel_formula('TEAMDEF', '$H$2:$H$34', '$C', append_row, '$B$2:$B$34', right=True),
+            bld_excel_formula('TEAMDEF', '$H$2:$H$34', '$C',
+                              append_row, '$B$2:$B$34', right=True),
             # vs. WR1
-            bld_excel_formula('TEAMDEF', '$D$37:$D$68', '$C', append_row, '$B$37:$B$68', right=True),
+            bld_excel_formula('TEAMDEF', '$D$37:$D$68', '$C',
+                              append_row, '$B$37:$B$68', right=True),
             # vs. WR2
-            bld_excel_formula('TEAMDEF', '$H$37:$H$68', '$C', append_row, '$B$37:$B$68', right=True),
+            bld_excel_formula('TEAMDEF', '$H$37:$H$68', '$C',
+                              append_row, '$B$37:$B$68', right=True),
             # season snap%
             bld_excel_formula('SNAPS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # season targets
             bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # season receptions
-            bld_excel_formula('RECEPTIONS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
+            bld_excel_formula('RECEPTIONS', '$D$2:$D$449',
+                              '$B', append_row, '$A$2:$A$449'),
             # week snap% (week6)
-            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B',
+                              append_row, '$A$2:$A$449', week=True),
             # week targets (week 6)
-            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B',
+                              append_row, '$A$2:$A$449', week=True),
             # week targets (week 6)
-            bld_excel_formula('RECEPTIONS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            bld_excel_formula('RECEPTIONS', '$J$2:$J$449', '$B',
+                              append_row, '$A$2:$A$449', week=True),
             # average PPG
             stats_dict['avg_ppg'],
             # ECR
@@ -967,28 +992,29 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # +/- rank
             'x',
             # ECR Data
-            bld_excel_formula('WR_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+            bld_excel_formula('WR_ECR', '$A$2:$A${}'.format(max_row),
+                              '$B', append_row, '$C$2:$C${}'.format(max_row)),
             # salary rank
             'x',
-            # fdraft salary
-            fdraft_dict[name]['salary'],
-            # fdraft salary perc
-            fdraft_dict[name]['salary_perc'],
         ]
     elif title == 'TE':
         positional_fields = [
             # pass dvoa
-            bld_excel_formula('TEAMDEF', '$H$2:$H$34', '$C', append_row, '$B$2:$B$34', right=True),
+            bld_excel_formula('TEAMDEF', '$H$2:$H$34', '$C',
+                              append_row, '$B$2:$B$34', right=True),
             # vs. TE
-            bld_excel_formula('TEAMDEF', '$P$37:$P$68', '$C', append_row, '$B$37:$B$68', right=True),
+            bld_excel_formula('TEAMDEF', '$P$37:$P$68', '$C',
+                              append_row, '$B$37:$B$68', right=True),
             # season snap%
             bld_excel_formula('SNAPS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # season targets
             bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # week snap% (week6)
-            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B',
+                              append_row, '$A$2:$A$449', week=True),
             # week targets (week 6)
-            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B',
+                              append_row, '$A$2:$A$449', week=True),
             # average PPG
             stats_dict['avg_ppg'],
             # ECR
@@ -996,13 +1022,10 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # +/- rank
             'x',
             # ECR Data
-            bld_excel_formula('TE_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
+            bld_excel_formula('TE_ECR', '$A$2:$A${}'.format(max_row),
+                              '$B', append_row, '$C$2:$C${}'.format(max_row)),
             # salary rank
             'x',
-            # fdraft salary
-            fdraft_dict[name]['salary'],
-            # fdraft salary perc
-            fdraft_dict[name]['salary_perc'],
         ]
     elif title == 'DST':
         positional_fields = [
@@ -1013,12 +1036,21 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # +/- rank
             'x',
             # ECR Data
-            bld_excel_formula('DST_ECR', '$A$2:$A${}'.format(max_row), '$D', append_row, '$C$2:$C{}'.format(max_row), dst=True),
+            bld_excel_formula('DST_ECR', '$A$2:$A${}'.format(max_row),
+                              '$D', append_row, '$C$2:$C{}'.format(max_row), dst=True),
             # # fdraft salary
             # fdraft_dict[name]['salary'],
             # # fdraft salary perc
             # fdraft_dict[name]['salary_perc'],
         ]
+
+    if name in fdraft_dict:
+        positional_fields.extend([
+            # fdraft salary
+            fdraft_dict[name]['salary'],
+            # fdraft salary perc
+            fdraft_dict[name]['salary_perc']
+        ])
 
     row = all_positions_fields + positional_fields
 
@@ -1127,7 +1159,8 @@ def top_lvl_header(wb, title, text, start_col, length, color):
     wb[title][cell] = text
     # set range to format merged cells
     fmt_range = "{0}1:{1}1".format(start_col, chr(ord(start_col) + length))
-    style_range(wb[title], fmt_range, font=font, fill=PatternFill(patternType="solid", fgColor=color), alignment=al)
+    style_range(wb[title], fmt_range, font=font, fill=PatternFill(
+        patternType="solid", fgColor=color), alignment=al)
 
 
 def bld_excel_formula_2(title, rtrn_col, rtrn_start, rtrn_stop, match, row, match_col, match_start, match_stop,
@@ -1204,7 +1237,8 @@ def apply_border(wb):
 
         # skip first field
         for i in range(1, len(fields)):
-            fmt_range = "{0}1:{1}{2}".format(fields[i - 1], chr(ord(fields[i]) - 1), ws.max_row)
+            fmt_range = "{0}1:{1}{2}".format(
+                fields[i - 1], chr(ord(fields[i]) - 1), ws.max_row)
             style_range(ws, fmt_range, border=border)
 
 
@@ -1399,6 +1433,7 @@ def read_fantasy_draft_csv(filename):
         #     print(fields)
         #     exit()
 
+
 def print_fantasy_draft_to_wb(wb, fdraft_dict):
     ws = wb.active
 
@@ -1407,12 +1442,11 @@ def print_fantasy_draft_to_wb(wb, fdraft_dict):
         # print(player)
         # ws.append([player[key] for key in player])
         # for k, v in player.items():
-            # print("{}: {}".format(k, v))
-
+        # print("{}: {}".format(k, v))
 
 
 def main():
-    fn = 'DKSalaries_week7_full.csv'
+    fn = 'DKSalaries_week8_full.csv'
     dest_filename = 'sheet.xlsx'
 
     # create workbook/worksheet
@@ -1432,7 +1466,7 @@ def main():
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
         fpros_ecr(wb, position)
 
-    fdraft_csv = 'FDraft_week7_full.csv'
+    fdraft_csv = 'FDraft_week8_full.csv'
     if path.exists(fdraft_csv):
         fdraft_dict = read_fantasy_draft_csv(fdraft_csv)
     else:
