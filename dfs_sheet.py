@@ -938,13 +938,13 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # season targets
             bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # week snap% (week6)
-            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B',
+            bld_excel_formula('SNAPS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
             # week rush atts (week 6)
-            bld_excel_formula('RUSH_ATTS', '$J$2:$J$449', '$B',
+            bld_excel_formula('RUSH_ATTS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
             # week targets (week 6)
-            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B',
+            bld_excel_formula('TARGETS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
             # average PPG
             stats_dict['avg_ppg'],
@@ -977,13 +977,13 @@ def position_tab(wb, values, title, fdraft_dict=None):
             bld_excel_formula('RECEPTIONS', '$D$2:$D$449',
                               '$B', append_row, '$A$2:$A$449'),
             # week snap% (week6)
-            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B',
+            bld_excel_formula('SNAPS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
             # week targets (week 6)
-            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B',
+            bld_excel_formula('TARGETS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
             # week targets (week 6)
-            bld_excel_formula('RECEPTIONS', '$J$2:$J$449', '$B',
+            bld_excel_formula('RECEPTIONS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
             # average PPG
             stats_dict['avg_ppg'],
@@ -1010,10 +1010,10 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # season targets
             bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
             # week snap% (week6)
-            bld_excel_formula('SNAPS', '$J$2:$J$449', '$B',
+            bld_excel_formula('SNAPS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
             # week targets (week 6)
-            bld_excel_formula('TARGETS', '$J$2:$J$449', '$B',
+            bld_excel_formula('TARGETS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
             # average PPG
             stats_dict['avg_ppg'],
@@ -1133,11 +1133,11 @@ def write_RB_cols(wb):
         # # season targets
         # bld_excel_formula('TARGETS', '$D$2:$D$449', '$B', append_row, '$A$2:$A$449'),
         # # week snap% (week6)
-        # bld_excel_formula('SNAPS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+        # bld_excel_formula('SNAPS', '$K$2:$K$449', '$B', append_row, '$A$2:$A$449', week=True),
         # # week rush atts (week 6)
-        # bld_excel_formula('RUSH_ATTS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+        # bld_excel_formula('RUSH_ATTS', '$K$2:$K$449', '$B', append_row, '$A$2:$A$449', week=True),
         # # week targets (week 6)
-        # bld_excel_formula('TARGETS', '$J$2:$J$449', '$B', append_row, '$A$2:$A$449', week=True),
+        # bld_excel_formula('TARGETS', '$K$2:$K$449', '$B', append_row, '$A$2:$A$449', week=True),
         # # average PPG
         # stats_dict['avg_ppg'],
         # # ECR
