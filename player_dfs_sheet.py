@@ -819,6 +819,16 @@ def read_fantasy_draft_csv(filename):
         return dictionary
 
 
+def write_position_to_sheet(wb, player):
+    if player.position not in wb.sheetnames:
+        wb.create_sheet(title=player.position)
+        wb[player.position].append(player.get_writable_header())
+
+    ws = wb[player.position]
+
+    ws.append(player.get_writable_row())
+
+
 def main():
     fn = 'DKSalaries_week8_full.csv'
     dest_filename = 'player_sheet.xlsx'
@@ -940,6 +950,22 @@ def main():
                         rb.set_season_fields(stats_dict['snaps'][name]['average'],
                                              stats_dict['rush_atts'][name]['average'],
                                              stats_dict['targets'][name]['average'])
+
+                        # store lists in Player object
+                        rb.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
+                        rb.rush_atts_weeks = stats_dict['rush_atts'][name]['weeks']
+                        rb.targets_weeks = stats_dict['targets'][name]['weeks']
+                        print(rb)
+                        # print("snaps list: {}".format(rb.snap_percentage_by_week))
+                        # print("last_week_snaps: {}".format(rb.last_week_snaps()))
+                        print("rush dict: {}".format(rb.rush_atts_weeks))
+                        print("last_week_rush: {}".format(rb.last_week_rush_atts()))
+
+                        print("targets dict: {}".format(rb.targets_weeks))
+                        print("targets list: {}".format(rb.targets_weeks[-1]))
+                        print("last_week_targets: {}".format(rb.last_week_targets()))
+                        exit()
+                        rb.set_last_week_fields('x', 'x', 'x')
                     else:
                         print("Could find no SNAPS information on {}".format(name))
                     player_list.append(rb)
@@ -953,6 +979,7 @@ def main():
                         wr.set_season_fields(stats_dict['snaps'][name]['average'],
                                              stats_dict['targets'][name]['average'],
                                              stats_dict['receptions'][name]['average'])
+                        wr.set_last_week_fields('x', 'x', 'x')
                     else:
                         print("Could find no SNAPS information on {}".format(name))
                     player_list.append(wr)
@@ -961,9 +988,13 @@ def main():
                     # set position-specific dvoa fields
                     te.set_dvoa_fields(
                         dvoa_opponent['pass_def_rank'], dvoa_opponent['te_rank'])
-                    te.set_season_fields(stats_dict['snaps'][name]['average'],
-                                         stats_dict['targets'][name]['average'],
-                                         stats_dict['receptions'][name]['average'])
+                    if name in stats_dict['snaps']:
+                        te.set_season_fields(stats_dict['snaps'][name]['average'],
+                                             stats_dict['targets'][name]['average'],
+                                             stats_dict['receptions'][name]['average'])
+                        te.set_last_week_fields('x', 'x', 'x')
+                    else:
+                        print("Could find no SNAPS information on {}".format(name))
                     player_list.append(te)
                 elif position == 'DST':
                     dst = DST(p)
@@ -974,10 +1005,12 @@ def main():
     #     print("k: {}".format(k))
     #     print("v: {}".format(v))
     for i, player in enumerate(player_list):
-        if player.position == 'QB':
-            print(player)
-            # print(player.fdraft_salary)
-            # print(player.fdraft_salary_perc)
+        # if player.position == 'QB':
+            # write_position_to_sheet(wb, player)
+        write_position_to_sheet(wb, player)
+        # print(player)
+        # print(player.fdraft_salary)
+        # print(player.fdraft_salary_perc)
 
         # print("run_dvoa: {} pass_dvoa: {}".format(rb.run_dvoa, rb.rb_pass_dvoa))
         # print("[{}] ou: {} line: {} proj: {}".format(rb.team_abbv, rb.overunder, rb.line, rb.projected))
