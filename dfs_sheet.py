@@ -744,8 +744,8 @@ def position_tab(wb, values, title, fdraft_dict=None):
 
             position_fields = [
                 'Rushing Yards', 'DYAR', 'QBR', 'O-Line Sack%', 'D-Line Sack%',
-                'Def Y/A', 'Def Compl%', 'Def TD%',
-                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
+                'Def Yds/Att', 'Def Comp%', 'Def TD%',
+                'Ave PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
                 'FD Salary', 'FD Salary%'
             ]
         elif title == 'RB':
@@ -759,7 +759,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
 
             position_fields = [
                 'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line', 'Snap%', 'Rush ATTs',
-                'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
+                'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Ave PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
                 'FD Salary', 'FD Salary%'
             ]
         elif title == 'WR':
@@ -773,7 +773,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
 
             position_fields = [
                 'Pass DVOA', 'vs. WR1', 'vs. WR2', 'Snap%', 'Targets', 'Recepts',
-                'Snap%', 'Targets', 'Recepts', 'Average PPG',
+                'Snap%', 'Targets', 'Recepts', 'Ave PPG',
                 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
                 'FD Salary', 'FD Salary%'
             ]
@@ -787,7 +787,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
             top_lvl_header(wb, title, 'FDRAFT', 'U', 1, 'FFA8F3D9')
 
             position_fields = [
-                'Pass DVOA', 'vs. TE', 'Snap%', 'Targets', 'Snap%', 'Targets', 'Average PPG',
+                'Pass DVOA', 'vs. TE', 'Snap%', 'Targets', 'Snap%', 'Targets', 'Ave PPG',
                 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
                 'FD Salary', 'FD Salary%'
             ]
@@ -797,7 +797,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
             top_lvl_header(wb, title, 'RANKINGS', 'J', 2, 'FF70AD47')
 
             position_fields = [
-                'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
+                'Ave PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank',
                 'FD Salary', 'FD Salary%'
             ]
 
@@ -888,7 +888,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # matchup td %
             bld_excel_formula('DEF_STATS', 'J$2:$J${0}'.format(
                 max_row), '$C', append_row, '$A$2:$A${0}'.format(max_row), right=True),
-            # average PPG
+            # Ave PPG
             stats_dict['avg_ppg'],
             # ECR
             '=RANK(U{0}, $U$3:$U${1},1)'.format(append_row, max_row),
@@ -946,7 +946,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # week targets (week 6)
             bld_excel_formula('TARGETS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
-            # average PPG
+            # Ave PPG
             stats_dict['avg_ppg'],
             # ECR
             '=RANK(V{0}, $V$3:$V$69,1)'.format(append_row),
@@ -985,7 +985,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # week targets (week 6)
             bld_excel_formula('RECEPTIONS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
-            # average PPG
+            # Ave PPG
             stats_dict['avg_ppg'],
             # ECR
             '=RANK(S{0}, $S$3:$S$94,1)'.format(append_row),
@@ -1015,7 +1015,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # week targets (week 6)
             bld_excel_formula('TARGETS', '$K$2:$K$449', '$B',
                               append_row, '$A$2:$A$449', week=True),
-            # average PPG
+            # Ave PPG
             stats_dict['avg_ppg'],
             # ECR
             '=RANK(R{0}, $R$3:$R$52,1)'.format(append_row),
@@ -1029,7 +1029,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
         ]
     elif title == 'DST':
         positional_fields = [
-            # average PPG
+            # Ave PPG
             stats_dict['avg_ppg'],
             # ECR
             '=RANK(L{0}, $L$3:$L$52,1)'.format(append_row),
@@ -1093,7 +1093,7 @@ def write_RB_cols(wb):
     ws = wb['RB']
     position_fields = [
         'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line', 'Snap%', 'Rush ATTs',
-        'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Average PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
+        'Targets', 'Snap%', 'Rush ATTs', 'Targets', 'Ave PPG', 'ECR', '+/- Rank', 'ECR Data', 'Salary Rank'
     ]
     # set max_row for formulas
     max_row = ws.max_row
@@ -1138,7 +1138,7 @@ def write_RB_cols(wb):
         # bld_excel_formula('RUSH_ATTS', '$K$2:$K$449', '$B', append_row, '$A$2:$A$449', week=True),
         # # week targets (week 6)
         # bld_excel_formula('TARGETS', '$K$2:$K$449', '$B', append_row, '$A$2:$A$449', week=True),
-        # # average PPG
+        # # Ave PPG
         # stats_dict['avg_ppg'],
         # # ECR
         # '=RANK(V{0}, $V$3:$V$69,1)'.format(append_row),
@@ -1261,7 +1261,7 @@ def style_ranges(wb):
         green_to_red_headers = [
             'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
             'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'Recepts', 'vs. TE', 'D-Line Sack%',
-            'Average PPG', 'Rushing Yards', 'DYAR', 'QBR', 'Def Y/A', 'Def Compl%', 'Def TD%'
+            'Ave PPG', 'Rushing Yards', 'DYAR', 'QBR', 'Def Yds/Att', 'Def Comp%', 'Def TD%'
         ]
         green_to_red_rule = ColorScaleRule(start_type='min', start_color=red,
                                            mid_type='percentile', mid_value=50, mid_color=yellow,
@@ -1300,10 +1300,29 @@ def style_ranges(wb):
                 # print("[{}] Coloring {} [{} - {}] red_to_green".format(title, ws.cell(row=2, column=i).value, ws.cell(row=2, column=i), cell_rng))
                 wb[title].conditional_formatting.add(cell_rng, white_middle_rule)
 
-        # set column widths
-        column_widths = [8, 20, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]
-        for i, column_width in enumerate(column_widths):
-            ws.column_dimensions[get_column_letter(i + 1)].width = column_width
+
+def apply_column_widths(wb):
+    # set column widths
+    # column_widths = [8, 20, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]
+
+    # for i, column_width in enumerate(column_widths):
+        # ws.column_dimensions[get_column_letter(i + 1)].width = column_width
+    for title in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[title]
+        for i, cell in enumerate(ws[2]):
+            # print(cell)
+            if cell.value == 'Name':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 20
+            elif cell.value == 'Opp':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 10
+            elif cell.value == 'Position':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 8
+            elif cell.value == 'FD Salary':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 9
+            elif cell.value == '+/- Rank':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 5
+            else:
+                ws.column_dimensions[get_column_letter(i + 1)].width = 7.7
 
 
 def bool_found_player_in_ecr_tab(ws_column, name):
@@ -1394,6 +1413,10 @@ def insert_ranks(wb):
                 salary_rank_col, cell.row, ecr_col)
 
         # hide data columns
+        # print("1: {}".format(ecr_data_col))
+        # print("2: {}".format(salary_rank_col))
+        # print("3: {}".format(ws))
+        # print("4: {}".format(ws.column_dimensions[ecr_data_col]))
         ws.column_dimensions[ecr_data_col].hidden = True
         ws.column_dimensions[salary_rank_col].hidden = True
 
@@ -1529,6 +1552,9 @@ def main():
 
     # inserts ecr/salary ranks and +/-
     insert_ranks(wb)
+
+    # apply column widths
+    apply_column_widths(wb)
 
     # freeze header
     freeze_header(wb)
