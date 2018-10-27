@@ -9,7 +9,6 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, PatternFill, Border, Side, Font, colors
 from openpyxl.formatting.rule import ColorScaleRule
 from openpyxl.utils import get_column_letter
-# from openpyxl.cell import get_column_letter
 from os import path, makedirs
 
 
@@ -1080,12 +1079,10 @@ def position_tab(wb, values, title, fdraft_dict=None):
 
 def find_header_col(ws, header_value):
     header_row = 2
-
     # search through header_row for value
-    for col in ws[header_row]:
-        if col.value == header_value:
-            return col.column
-
+    for cell in ws[header_row]:
+        if cell.value == header_value:
+            return cell.column
     return None
 
 
@@ -1429,7 +1426,7 @@ def read_fantasy_draft_csv(filename):
         headers = [header.lower().strip() for header in next(reader)]
         headers.append('salary_perc')
 
-        dict1 = {}
+        dictionary = {}
         for row in reader:
             # remove periods from name
             row[1] = row[1].replace('.', '')
@@ -1440,9 +1437,8 @@ def read_fantasy_draft_csv(filename):
             row[5] = row[5][1:].replace(',', '')
             salary_perc = "{0:0.1%}".format(float(row[5]) / 100000)
             row.append(salary_perc)
-            dict1[row[1]] = {key: value for key, value in zip(headers, row)}
-
-        return dict1
+            dictionary[row[1]] = {key: value for key, value in zip(headers, row)}
+        return dictionary
         # # read entire file into memory
         # lines = f.readlines()
 

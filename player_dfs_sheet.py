@@ -5,7 +5,9 @@ import requests
 from os import path
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, PatternFill, Border, Side, Font, colors
+from openpyxl.styles import Alignment, PatternFill, Border, Side, Font
+from openpyxl.formatting.rule import ColorScaleRule
+from openpyxl.utils import get_column_letter, column_index_from_string
 
 from player import Player, QB, RB, WR, TE, DST
 
@@ -281,7 +283,7 @@ def get_nfl_def_stats(wb):
     # create worksheet
     title = 'DEF_STATS'
     header = ['team abbv', 'team', 'pass_att', 'pass_yd_per_att', 'pass_compls', 'pass_yd_per_compl',
-              'pass_yds', 'pass_tds', 'compl_perc', 'pass_td_per_att']
+              'pass_yds', 'pass_tds', 'compl_perc', 'pass_td_per_att_perc']
     create_sheet_header(wb, title, header)
 
     team_map = {
@@ -331,14 +333,14 @@ def get_nfl_def_stats(wb):
         pass_tds = d['passing_touchdowns']
 
         # personal
-        pass_td_per_att = "{0:.4f}".format(pass_tds / pass_att)
+        pass_td_per_att_perc = "{0:.4f}".format(pass_tds / pass_att)
         compl_perc = "{0:.4f}".format(pass_compls / pass_att)
 
         # remove '.' from name
         # name = name.replace('.', '')
 
         ls = [team_abbv, team, pass_att, pass_yd_per_att, pass_compls, pass_yd_per_compl,
-              pass_yds, pass_tds, compl_perc, pass_td_per_att]
+              pass_yds, pass_tds, compl_perc, pass_td_per_att_perc]
 
         wb[title].append(ls)
 
@@ -819,14 +821,385 @@ def read_fantasy_draft_csv(filename):
         return dictionary
 
 
-def write_position_to_sheet(wb, player):
+def excel_write_position_to_sheet(wb, player):
+    # create
     if player.position not in wb.sheetnames:
         wb.create_sheet(title=player.position)
+        # create top level header for positional tab
+        excel_write_top_level_header(wb[player.position], player)
         wb[player.position].append(player.get_writable_header())
 
     ws = wb[player.position]
-
+    # print("max_row: {}".format(ws.max_row))
     ws.append(player.get_writable_row())
+    excel_apply_format_row(ws, ws.max_row)
+
+
+def excel_apply_format_row(ws, row_num):
+    al = Alignment(horizontal='center', vertical='center')
+    for cell in ws[row_num]:
+        cell.alignment = al
+
+
+def excel_insert_ranks(wb):
+    header_row_num = 2
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[position]
+
+        ecr_col = ''
+        ecr_data_col = ''
+        salary_col = ''
+        salary_rank_col = ''
+        fd_salary_col = ''
+        fd_salary_rank_col = ''
+        plus_minus_col = ''
+        fd_plus_minus_col = ''
+        max_row = ws.max_row
+
+        # look through header row and pull header columns
+        for col in ws[header_row_num]:
+            if col.value == 'ECR':
+                ecr_col = col.column
+            elif col.value == 'ECR Data':
+                ecr_data_col = col.column
+            elif col.value == 'Salary':
+                salary_col = col.column
+            elif col.value == 'Salary Rank':
+                salary_rank_col = col.column
+            elif col.value == '+/- Rank':
+                plus_minus_col = col.column
+            elif col.value == 'FD Salary':
+                fd_salary_col = col.column
+            elif col.value == 'FDraft Salary Rank':
+                fd_salary_rank_col = col.column
+            elif col.value == 'FD +/- Rank':
+                fd_plus_minus_col = col.column
+
+        # ECR rank
+        for cell in ws[ecr_col]:
+            # skip header rows
+            if cell.row <= 2:
+                continue
+            cell.value = '=RANK(${0}{1}, ${0}3:${0}{2},1)'.format(
+                ecr_data_col, cell.row, max_row)
+
+        # salary rank
+        for cell in ws[salary_rank_col]:
+            # skip header rows
+            if cell.row <= 2:
+                continue
+            cell.value = '=RANK(${0}{1}, ${0}3:${0}{2},0)'.format(
+                salary_col, cell.row, max_row)
+
+        # +/- rank
+        for cell in ws[plus_minus_col]:
+            # skip header rows
+            if cell.row <= 2:
+                continue
+            cell.value = '={0}{1} - {2}{1}'.format(
+                salary_rank_col, cell.row, ecr_col)
+
+        # FD salary rank
+        for cell in ws[fd_salary_rank_col]:
+            # skip header rows
+            if cell.row <= 2:
+                continue
+            cell.value = '=RANK(${0}{1}, ${0}3:${0}{2},0)'.format(
+                fd_salary_col, cell.row, max_row)
+
+        # fd +- rank - fd salary rank - DK salary rank
+        for cell in ws[fd_plus_minus_col]:
+            # skip header rows
+            if cell.row <= 2:
+                continue
+            cell.value = '={0}{1} - {2}{1}'.format(
+                fd_salary_rank_col, cell.row, salary_rank_col)
+        # hide data columns
+        # print("1: {}".format(ecr_data_col))
+        # print("2: {}".format(salary_rank_col))
+        # print("3: {}".format(ws))
+        # print("4: {}".format(ws.column_dimensions[ecr_data_col]))
+        # ws.column_dimensions[ecr_data_col].hidden = True
+        # ws.column_dimensions[salary_rank_col].hidden = True
+
+
+def excel_write_top_level_header(ws, player):
+    """Write the top most header row with merged cells and colors."""
+
+    # colors
+    color_white = 'FF000000'
+    color_yellow = 'FFFFC000'
+    color_orange = 'FFED7D31'
+    color_light_blue = 'FF00B0F0'
+    color_darker_blue = 'FF5B9BD5'
+    color_green = 'FF70AD47'
+    color_cyan = 'FFA8F3D9'
+
+    # these values are in all positional tabs
+    dictionary = {
+        'DK': {'length': 2, 'color': color_white},
+        'VEGAS': {'length': 3, 'color': color_yellow},
+        'RANKINGS': {'length': 3, 'color': color_green},
+        'FDRAFT': {'length': 3, 'color': color_cyan}
+    }
+    if player.position == 'QB':
+        header_order = ['VEGAS', 'SEASON',
+                        'PRESSURE', 'MATCHUP', 'RANKINGS', 'DK', 'FDRAFT']
+        dictionary['SEASON'] = {'length': 3, 'color': color_light_blue}
+        dictionary['PRESSURE'] = {'length': 2, 'color': color_darker_blue}
+        dictionary['MATCHUP'] = {'length': 3, 'color': color_orange}
+    elif player.position == 'RB':
+        header_order = ['VEGAS', 'MATCHUP',
+                        'SEASON', 'LAST WEEK', 'RANKINGS', 'DK', 'FDRAFT']
+        dictionary['MATCHUP'] = {'length': 4, 'color': color_orange}
+        dictionary['SEASON'] = {'length': 3, 'color': color_light_blue}
+        dictionary['LAST WEEK'] = {'length': 3, 'color': color_darker_blue}
+    elif player.position == 'WR':
+        header_order = ['VEGAS', 'MATCHUP',
+                        'SEASON', 'LAST WEEK', 'RANKINGS', 'DK', 'FDRAFT']
+        dictionary['MATCHUP'] = {'length': 3, 'color': color_orange}
+        dictionary['SEASON'] = {'length': 3, 'color': color_light_blue}
+        dictionary['LAST WEEK'] = {'length': 3, 'color': color_darker_blue}
+
+    elif player.position == 'TE':
+        header_order = ['VEGAS', 'MATCHUP',
+                        'SEASON', 'LAST WEEK', 'RANKINGS', 'DK', 'FDRAFT']
+        dictionary['MATCHUP'] = {'length': 2, 'color': color_orange}
+        dictionary['SEASON'] = {'length': 3, 'color': color_light_blue}
+        dictionary['LAST WEEK'] = {'length': 3, 'color': color_darker_blue}
+    elif player.position == 'DST':
+        header_order = ['VEGAS', 'RANKINGS', 'DK', 'FDRAFT']
+
+    # start column count after 'blank' header
+    column_count = 5
+    for header in header_order:
+        start_column = get_column_letter(column_count)
+        excel_merge_top_header(
+            ws, header, start_column, dictionary[header]['length'], dictionary[header]['color'])
+        column_count += dictionary[header]['length']
+
+
+def excel_merge_top_header(ws, text, start_col, length, color):
+    """Style a range as merged cells."""
+    row_num = 1
+    # alignment style for merge + center
+    al = Alignment(horizontal="center", vertical="center")
+    # bold font
+    font = Font(b=True, color="FFFFFFFF")
+
+    # we actually want the length to be inclusive of the start column
+    length -= 1
+
+    # insert text into cell
+    ws.cell(row=1, column=column_index_from_string(start_col)).value = text
+    # column_index_from_string == order(col_idx)?
+    # set range to format merged cells
+    fmt_range = "{0}{row_num}:{1}{row_num}".format(
+        start_col, chr(ord(start_col) + length), row_num=row_num)
+    # print("[excel_merge_top_header]: fmt_range: {}".format(fmt_range))
+    # fmt_range = "{0}1:{1}1".format(get_column_letter(
+    #     start_col), get_column_letter(start_col + length))
+    style_range(ws, fmt_range, font=font, fill=PatternFill(
+        patternType="solid", fgColor=color), alignment=al)
+
+
+def excel_apply_borders(wb):
+    header_row = 1
+    border = Border(left=Side(border_style='thin', color='FF000000'),
+                    right=Side(border_style='thin', color='FF000000'))
+    bottom_side_border = Border(bottom=Side(border_style='thin', color='FF000000'))
+
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        # select worksheet
+        ws = wb[position]
+        # find header columns (None = empty cell)
+        fields = [cell.column for cell in ws[header_row] if cell.value is not None]
+        # for cell in ws[1]:
+        #     if cell.value is not None:
+        #         fields.append(cell.column)
+        # print("field: {} [{}] [idx: {}]".format(cell.value, cell.column, cell.col_idx))
+
+        # add max column (letter) to field
+        # fields.append(get_column_letter(ws.max_column))
+        # add arbitrary 3 letters for fantasy draft
+        last_column_header_index = column_index_from_string(fields[-1])
+        final_column_for_border = get_column_letter(last_column_header_index + 3)
+        fields.append(final_column_for_border)
+
+        # skip first field
+        for i in range(1, len(fields)):
+            prev_letter_index = column_index_from_string(fields[i]) - 1
+            prev_letter = get_column_letter(prev_letter_index)
+            fmt_range = "{0}1:{1}{2}".format(
+                fields[i - 1], prev_letter, ws.max_row)
+            style_range(ws, fmt_range, border=border)
+
+        # add bottom border on last row
+        for cell in ws[ws.max_row]:
+            cell.border = cell.border + bottom_side_border
+
+
+def find_fields_in_header(ws, search_fields):
+    header_row = 2
+    columns = []
+    for cell in ws[header_row]:
+        if cell.value in search_fields:
+            columns.append(cell.column)
+            continue
+    return columns
+# search one ws header for many fields
+# return indices of header to be numberified
+
+
+def excel_apply_format_header(wb):
+    header_row_num = 2
+    row_height = 40
+    # change row font and alignment
+    font = Font(b=True, color="FF000000")
+    al = Alignment(horizontal="center", vertical="center", wrapText=True)
+
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[position]
+        # set row height
+        ws.row_dimensions[header_row_num].height = row_height
+
+        for cell in ws[header_row_num]:
+            cell.font = font
+            cell.alignment = al
+
+
+def excel_apply_cell_number_formats(wb):
+    percentage_fields = ['Salary%', 'FD Salary%', 'O-Line Sack%', 'D-Line Sack%',
+                         'Def Comp%', 'Def TD%']
+    currency_fields = ['Salary', 'FD Salary']
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[position]
+
+        # apply percentage format to percent fields
+        columns_perc = find_fields_in_header(ws, percentage_fields)
+        for column in columns_perc:
+            for cell in ws[column]:
+                cell.number_format = '##0.0%'
+
+        # apply dollar format to salary fields
+        columns_currency = find_fields_in_header(ws, currency_fields)
+        for column in columns_currency:
+            for cell in ws[column]:
+                cell.number_format = '$#,##0_);($#,##0)'
+
+
+def excel_apply_column_widths(wb):
+    """Apply column widths to positional tabs."""
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[position]
+        for i, cell in enumerate(ws[2]):
+            # print(cell)
+            if cell.value == 'Name':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 20
+            # elif cell.value == 'Opp':
+            #     ws.column_dimensions[get_column_letter(i + 1)].width = 10
+            elif cell.value == 'Position':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 8
+            elif cell.value == 'FD Salary':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 9
+            elif cell.value == '+/- Rank' or cell.value == 'Line':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 5
+            elif cell.value == 'FD +/- Rank':
+                ws.column_dimensions[get_column_letter(i + 1)].width = 6
+            else:
+                ws.column_dimensions[get_column_letter(i + 1)].width = 7.7
+
+
+def excel_apply_conditional_formatting(wb):
+    # define colors for colorscale (from excel)
+    red = 'F8696B'
+    yellow = 'FFEB84'
+    green = '63BE7B'
+    white = 'FFFFFF'
+
+    # start color rule after headers
+    start_row = 3
+
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[position]
+        # add filter/sort. excel will not automatically do it!
+        # filter_range = "{0}:{1}".format('D2', ws.max_row)
+        # ws.auto_filter.ref = filter_range
+        # sort_range = "{0}:{1}".format('D3', ws.max_row)
+
+        # ws.auto_filter.add_sort_condition(sort_range)
+        # bigger/positive = green, smaller/negative = red
+        green_to_red_headers = [
+            'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
+            'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'Recepts', 'vs. TE', 'D-Line Sack%',
+            'Ave PPG', 'Rushing Yards', 'DYAR', 'QBR', 'Def Yds/Att', 'Def Comp%', 'Def TD%'
+        ]
+        green_to_red_rule = ColorScaleRule(start_type='min', start_color=red,
+                                           mid_type='percentile', mid_value=50, mid_color=yellow,
+                                           end_type='max', end_color=green)
+        # bigger/positive = red, smaller/negative = green
+        red_to_green_headers = [
+            'Line', 'D-Line', 'O-Line Sack%', 'ECR'
+        ]
+        red_to_green_rule = ColorScaleRule(start_type='min', start_color=green,
+                                           mid_type='percentile', mid_value=50, mid_color=yellow,
+                                           end_type='max', end_color=red)
+        white_middle_headers = [
+            '+/- Rank', 'FD +/- Rank'
+        ]
+        white_middle_rule = ColorScaleRule(start_type='min', start_color=red,
+                                           mid_type='percentile', mid_value=50, mid_color=white,
+                                           end_type='max', end_color=green)
+        # color ranges
+        for i in range(1, ws.max_column + 1):
+            column_letter = get_column_letter(i)
+            cell_rng = "{0}{1}:{2}".format(column_letter, start_row, ws.max_row)
+            if ws.cell(row=2, column=i).value in green_to_red_headers:
+                # color range (green to red)
+                ws.conditional_formatting.add(cell_rng, green_to_red_rule)
+            elif ws.cell(row=2, column=i).value in red_to_green_headers:
+                # color range (red to green)
+                ws.conditional_formatting.add(cell_rng, red_to_green_rule)
+            elif ws.cell(row=2, column=i).value in white_middle_headers:
+                # color range (red to white to green)
+                ws.conditional_formatting.add(cell_rng, white_middle_rule)
+
+
+def excel_apply_hide_columns(wb):
+    header_row_num = 2
+
+    hidden_columns = ['Abbv', 'ECR Data', 'Salary Rank', 'FDraft Salary Rank']
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[position]
+        for col in ws[header_row_num]:
+            if col.value in hidden_columns:
+                ws.column_dimensions[col.column].hidden = True
+
+
+def excel_apply_header_freeze(wb):
+    # freeze header
+    row_id = 3
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[position]
+        # panes frozen are above and to the left of the cell frozen
+        ws.freeze_panes = 'D3'
+        # max_row = ws.max_row
+        # ws.freeze_panes = "{0}{row_id}".format(
+        #     get_column_letter(ws.max_column), row_id=row_id)
+
+
+def excel_apply_filter_setup(wb):
+    pass
+
+
+def excel_apply_sheet_order(wb):
+    # pull indices from QB, RB, WR, TE, DST to be ordered first
+    order = [wb.worksheets.index(wb[i]) for i in ['QB', 'RB', 'WR', 'TE', 'DST']]
+
+    # create set from 0 to len(wb._sheets)
+    # subtract unique values from set and extend list to fill in missing values
+    order.extend(list(set(range(len(wb._sheets))) - set(order)))
+    wb._sheets = [wb._sheets[i] for i in order]
 
 
 def main():
@@ -850,8 +1223,6 @@ def main():
     #     makedirs(directory)
 
     # pull positional stats from fantasypros.com
-    # for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
-
     ecr_pos_dict = {}
     # for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
@@ -900,14 +1271,11 @@ def main():
             # also remove periods (T.J. Yeldon for example)
             name = name.replace('.', '')
 
+            # use team_abbv for DSTs
             if position == 'DST':
                 name = fields[7]
 
-            # print("opp: {} opp_excel: {}".format(opp, opp_excel))
-            # if player does not exist, skip
-            # for item in ecr_pos_dict[position]:
-            #     if any(name in s for s in item):
-            #         print("Found {}!".format(name))
+            # if player is not in ECR rankings, skip him
             ecr_item = find_name_in_ecr(ecr_pos_dict[position], name)
             if ecr_item:
                 # ecr_rank, ecr_wsis, ecr_dumb_name, ecr_matchup, ecr_best, ecr_worse, ecr_avg, ecr_std_dev = ecr_item
@@ -920,29 +1288,41 @@ def main():
                 if fdraft_dict:
                     p.set_fdraft_fields(fdraft_dict[name]['salary'],
                                         fdraft_dict[name]['salary_perc'])
-                # local variable for dicts
-                dvoa_opponent = dvoa_dict[p.opponent]
-                # local variable for player's team
-                vegas_player_team = vegas_dict[team_abbv]
+
                 # set vegas fields based on team abbv (key)
                 p.set_vegas_fields(
-                    vegas_player_team['overunder'], vegas_player_team['line'], vegas_player_team['projected'])
+                    vegas_dict[team_abbv]['overunder'], vegas_dict[team_abbv]['line'], vegas_dict[team_abbv]['projected'])
 
                 if position == 'QB':
                     qb = QB(p)
-                    qb.set_sack_fields(line_dict['dl']['pass'][team_abbv]['adj_sack_rate'],
-                                       line_dict['dl']['pass'][p.opponent]['adj_sack_rate'])
-                    qb.set_season_fields(
-                        qb_dict[name]['rush_yds'], qb_dict[name]['pass_dyar'], qb_dict[name]['qbr'])
-                    qb.set_matchup_fields(
-                        def_dict[p.opponent]['pass_yd_per_att'], def_dict[p.opponent]['compl_perc'], def_dict[p.opponent]['pass_td_per_att'])
+
+                    # convert sack rates (3.86) to a decimal (0.00386)
+                    qb.line_sack_rate = float(
+                        line_dict['dl']['pass'][team_abbv]['adj_sack_rate']) / 100
+                    qb.opp_sack_rate = float(
+                        line_dict['dl']['pass'][p.opponent]['adj_sack_rate']) / 100
+
+                    # check for QB in qb_dict
+                    if name in qb_dict:
+                        qb.rush_yds = qb_dict[name]['rush_yds']
+                        qb.pass_dyar = qb_dict[name]['pass_dyar']
+                        qb.qbr = qb_dict[name]['qbr']
+                    else:
+                        print("Could find no QB information on {}".format(name))
+
+                    if p.opponent in def_dict:
+                        qb.opp_yds_att = def_dict[p.opponent]['pass_yd_per_att']
+                        qb.opp_comp_perc = def_dict[p.opponent]['compl_perc']
+                        qb.opp_td_perc = def_dict[p.opponent]['pass_td_per_att_perc']
+                    else:
+                        print("Could find no DEF information for {}".format(p.opponent))
 
                     player_list.append(qb)
                 elif position == 'RB':
                     rb = RB(p)
                     # set position-specific dvoa fields
                     rb.set_dvoa_fields(
-                        dvoa_opponent['rush_def_rank'], dvoa_opponent['rb_rank'])
+                        dvoa_dict[p.opponent]['rush_def_rank'], dvoa_dict[p.opponent]['rb_rank'])
                     # set oline/opponent dline stats for adjusted line yards
                     rb.set_line_fields(line_dict['ol']['run'][team_abbv]['adj_line_yds'],
                                        line_dict['dl']['run'][p.opponent]['adj_line_yds'])
@@ -955,31 +1335,30 @@ def main():
                         rb.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
                         rb.rush_atts_weeks = stats_dict['rush_atts'][name]['weeks']
                         rb.targets_weeks = stats_dict['targets'][name]['weeks']
-                        print(rb)
-                        # print("snaps list: {}".format(rb.snap_percentage_by_week))
-                        # print("last_week_snaps: {}".format(rb.last_week_snaps()))
-                        print("rush dict: {}".format(rb.rush_atts_weeks))
-                        print("last_week_rush: {}".format(rb.last_week_rush_atts()))
-
-                        print("targets dict: {}".format(rb.targets_weeks))
-                        print("targets list: {}".format(rb.targets_weeks[-1]))
-                        print("last_week_targets: {}".format(rb.last_week_targets()))
-                        exit()
-                        rb.set_last_week_fields('x', 'x', 'x')
+                        # rb.set_last_week_fields('x', 'x', 'x')
+                        rb.set_last_week_fields()
                     else:
-                        print("Could find no SNAPS information on {}".format(name))
+                        print("Could find no SNAPS information on {} [{}]".format(
+                            name, position))
                     player_list.append(rb)
                 elif position == 'WR':
                     wr = WR(p)
                     # set position-specific dvoa fields
-                    wr.set_dvoa_fields(dvoa_opponent['pass_def_rank'],
-                                       dvoa_opponent['rb_rank'], dvoa_opponent['rb_rank'])
+                    wr.set_dvoa_fields(dvoa_dict[p.opponent]['pass_def_rank'],
+                                       dvoa_dict[p.opponent]['rb_rank'], dvoa_dict[p.opponent]['rb_rank'])
                     # if player is not in snaps, he likely has no other information either
                     if name in stats_dict['snaps']:
                         wr.set_season_fields(stats_dict['snaps'][name]['average'],
                                              stats_dict['targets'][name]['average'],
                                              stats_dict['receptions'][name]['average'])
-                        wr.set_last_week_fields('x', 'x', 'x')
+
+                        # store lists in Player object
+                        wr.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
+                        wr.recepts_weeks = stats_dict['receptions'][name]['weeks']
+                        wr.targets_weeks = stats_dict['targets'][name]['weeks']
+
+                        # call class method to get fields for last week
+                        wr.set_last_week_fields()
                     else:
                         print("Could find no SNAPS information on {}".format(name))
                     player_list.append(wr)
@@ -987,12 +1366,25 @@ def main():
                     te = TE(p)
                     # set position-specific dvoa fields
                     te.set_dvoa_fields(
-                        dvoa_opponent['pass_def_rank'], dvoa_opponent['te_rank'])
+                        dvoa_dict[p.opponent]['pass_def_rank'], dvoa_dict[p.opponent]['te_rank'])
                     if name in stats_dict['snaps']:
                         te.set_season_fields(stats_dict['snaps'][name]['average'],
                                              stats_dict['targets'][name]['average'],
                                              stats_dict['receptions'][name]['average'])
-                        te.set_last_week_fields('x', 'x', 'x')
+                        te.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
+                        te.recepts_weeks = stats_dict['receptions'][name]['weeks']
+                        te.targets_weeks = stats_dict['targets'][name]['weeks']
+
+                        # call class method to set fields for last week
+                        te.set_last_week_fields()
+                        # print("snaps list: {}".format(rb.snap_percentage_by_week))
+                        # print(te.snap_percentage_by_week)
+                        # print(te.recepts_weeks)
+                        # print(te.targets_weeks)
+                        # print("last_week_snaps: {}".format(wr.last_week_snaps()))
+                        # print("last_week_rush: {}".format(wr.last_week_rush_atts()))
+                        # print("last_week_targets: {}".format(wr.last_week_targets()))
+                        # exit()
                     else:
                         print("Could find no SNAPS information on {}".format(name))
                     player_list.append(te)
@@ -1006,14 +1398,19 @@ def main():
     #     print("v: {}".format(v))
     for i, player in enumerate(player_list):
         # if player.position == 'QB':
-            # write_position_to_sheet(wb, player)
-        write_position_to_sheet(wb, player)
-        # print(player)
-        # print(player.fdraft_salary)
-        # print(player.fdraft_salary_perc)
+            # excel_write_position_to_sheet(wb, player)
+        excel_write_position_to_sheet(wb, player)
 
-        # print("run_dvoa: {} pass_dvoa: {}".format(rb.run_dvoa, rb.rb_pass_dvoa))
-        # print("[{}] ou: {} line: {} proj: {}".format(rb.team_abbv, rb.overunder, rb.line, rb.projected))
+    # apply Excel functions
+    excel_insert_ranks(wb)
+    excel_apply_format_header(wb)
+    excel_apply_header_freeze(wb)
+    excel_apply_cell_number_formats(wb)
+    excel_apply_column_widths(wb)
+    excel_apply_conditional_formatting(wb)
+    excel_apply_borders(wb)
+    excel_apply_hide_columns(wb)
+    excel_apply_sheet_order(wb)
 
     # save workbook (.xlsx file)
     wb.remove(ws1)  # remove blank worksheet
