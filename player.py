@@ -204,6 +204,10 @@ class RB(Player):
         self.last_week_targets = self.get_last_week_targets()
 
     def get_last_week_snaps(self):
+        # if list is empty, return None
+        if not self.snap_percentage_by_week:
+            return None
+
         return self.snap_percentage_by_week[-1]
 
     def get_last_week_rush_atts(self):
@@ -211,6 +215,10 @@ class RB(Player):
         return list(self.rush_atts_weeks.values())[-1]
 
     def get_last_week_targets(self):
+        # if list is empty, return None
+        if not self.targets_weeks:
+            return None
+
         return self.targets_weeks[-1]
 
     def get_writable_header(self):
@@ -281,13 +289,24 @@ class WR(Player):
         self.last_week_targets = self.get_last_week_targets()
 
     def get_last_week_snaps(self):
+        # if list is empty, return None
+        if not self.snap_percentage_by_week:
+            return None
+
         return self.snap_percentage_by_week[-1]
 
     def get_last_week_recepts(self):
-        # print("from class: {}".format(self.rush_atts_weeks))
+        # if dict is empty, return None
+        if not self.recepts_weeks:
+            return None
+
         return list(self.recepts_weeks.values())[-1]
 
     def get_last_week_targets(self):
+        # if list is empty, return None
+        if not self.targets_weeks:
+            return None
+
         return self.targets_weeks[-1]
 
     def get_writable_header(self):
@@ -358,13 +377,24 @@ class TE(Player):
         # print("set last_week_snap_percent to {}".format(self.last_week_targets))
 
     def get_last_week_snaps(self):
+        # if list is empty, return None
+        if not self.snap_percentage_by_week:
+            return None
+
         return self.snap_percentage_by_week[-1]
 
     def get_last_week_recepts(self):
-        # print("from class: {}".format(self.rush_atts_weeks))
+        # if dict is empty, return None
+        if not self.recepts_weeks:
+            return None
+
         return list(self.recepts_weeks.values())[-1]
 
     def get_last_week_targets(self):
+        # if list is empty, return None
+        if not self.targets_weeks:
+            return None
+
         return self.targets_weeks[-1]
 
     def get_writable_header(self):

@@ -195,7 +195,7 @@ def get_lineups_player_stats():
 
 
 def get_lineups_nfl_snaps():
-    ENDPOINT = 'https://api.lineups.com/nfl/fetch/snaps/2018/QB'
+    ENDPOINT = 'https://api.lineups.com/nfl/fetch/snaps/2018/OFF'
     fn = 'nfl_snaps.json'
     dir = 'sources'
     filename = path.join(dir, fn)
@@ -630,7 +630,8 @@ def get_line_rankings(wb):
                     # map o-line to 'run' key
                     dictionary[line]['run'][run_key] = dict(zip(run_key_names, cols))
                     # map d-line to 'pass' key
-                    dictionary[line]['pass'][pass_key] = dict(zip(pass_key_names, cols))
+                    dictionary[line]['pass'][pass_key] = dict(
+                        zip(pass_key_names, cols[-3:]))
                     # example
                     # dictionary['ol']['run']['LAR']['adj_line_yds'] = 6.969
                     # dictionary['dl']['pass']['MIA']['adj_sack_rate'] = 4.5%
@@ -1131,7 +1132,7 @@ def excel_apply_conditional_formatting(wb):
         # bigger/positive = green, smaller/negative = red
         green_to_red_headers = [
             'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
-            'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'Recepts', 'vs. TE', 'D-Line Sack%',
+            'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'Recepts', 'vs. TE',
             'Ave PPG', 'Rushing Yards', 'DYAR', 'QBR', 'Def Yds/Att', 'Def Comp%', 'Def TD%'
         ]
         green_to_red_rule = ColorScaleRule(start_type='min', start_color=red,
@@ -1139,7 +1140,7 @@ def excel_apply_conditional_formatting(wb):
                                            end_type='max', end_color=green)
         # bigger/positive = red, smaller/negative = green
         red_to_green_headers = [
-            'Line', 'D-Line', 'O-Line Sack%', 'ECR'
+            'Line', 'D-Line', 'O-Line Sack%', 'D-Line Sack%', 'ECR'
         ]
         red_to_green_rule = ColorScaleRule(start_type='min', start_color=green,
                                            mid_type='percentile', mid_value=50, mid_color=yellow,
@@ -1189,7 +1190,12 @@ def excel_apply_header_freeze(wb):
 
 
 def excel_apply_filter_setup(wb):
-    pass
+    """Apply filter to second header row."""
+    header_row = 2
+    for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
+        ws = wb[position]
+        filter_rng = "A{0}:{1}{0}".format(header_row, get_column_letter(ws.max_column))
+        ws.auto_filter.ref = filter_rng
 
 
 def excel_apply_sheet_order(wb):
@@ -1296,11 +1302,13 @@ def main():
                 if position == 'QB':
                     qb = QB(p)
 
-                    # convert sack rates (3.86) to a decimal (0.00386)
-                    qb.line_sack_rate = float(
-                        line_dict['dl']['pass'][team_abbv]['adj_sack_rate']) / 100
-                    qb.opp_sack_rate = float(
-                        line_dict['dl']['pass'][p.opponent]['adj_sack_rate']) / 100
+                    # convert string ('3.8%') to float (0.038)
+                    line_sack_rate = line_dict['ol']['pass'][team_abbv]['adj_sack_rate'].replace(
+                        '%', '')
+                    opp_sack_rate = line_dict['dl']['pass'][p.opponent]['adj_sack_rate'].replace(
+                        '%', '')
+                    qb.line_sack_rate = float(line_sack_rate) / 100
+                    qb.opp_sack_rate = float(opp_sack_rate) / 100
 
                     # check for QB in qb_dict
                     if name in qb_dict:
@@ -1340,12 +1348,14 @@ def main():
                     else:
                         print("Could find no SNAPS information on {} [{}]".format(
                             name, position))
+
+                    # call class method to set fields for last week
                     player_list.append(rb)
                 elif position == 'WR':
                     wr = WR(p)
                     # set position-specific dvoa fields
                     wr.set_dvoa_fields(dvoa_dict[p.opponent]['pass_def_rank'],
-                                       dvoa_dict[p.opponent]['rb_rank'], dvoa_dict[p.opponent]['rb_rank'])
+                                       dvoa_dict[p.opponent]['wr1_rank'], dvoa_dict[p.opponent]['wr2_rank'])
                     # if player is not in snaps, he likely has no other information either
                     if name in stats_dict['snaps']:
                         wr.set_season_fields(stats_dict['snaps'][name]['average'],
@@ -1357,10 +1367,11 @@ def main():
                         wr.recepts_weeks = stats_dict['receptions'][name]['weeks']
                         wr.targets_weeks = stats_dict['targets'][name]['weeks']
 
-                        # call class method to get fields for last week
+                        # call class method to set fields for last week
                         wr.set_last_week_fields()
                     else:
-                        print("Could find no SNAPS information on {}".format(name))
+                        print("Could find no SNAPS information on {} [{}]".format(
+                            name, position))
                     player_list.append(wr)
                 elif position == 'TE':
                     te = TE(p)
@@ -1386,7 +1397,8 @@ def main():
                         # print("last_week_targets: {}".format(wr.last_week_targets()))
                         # exit()
                     else:
-                        print("Could find no SNAPS information on {}".format(name))
+                        print("Could find no SNAPS information on {} [{}]".format(
+                            name, position))
                     player_list.append(te)
                 elif position == 'DST':
                     dst = DST(p)
@@ -1410,6 +1422,7 @@ def main():
     excel_apply_conditional_formatting(wb)
     excel_apply_borders(wb)
     excel_apply_hide_columns(wb)
+    excel_apply_filter_setup(wb)
     excel_apply_sheet_order(wb)
 
     # save workbook (.xlsx file)
