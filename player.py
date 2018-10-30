@@ -114,6 +114,7 @@ class QB(Player):
         self.qbr = None
 
         # matchup stats
+        self.pass_def_rank = None
         self.opp_yds_att = None
         self.opp_comp_perc = None
         self.opp_td_perc = None
@@ -138,7 +139,7 @@ class QB(Player):
                 'Implied Total', 'O/U', 'Line',  # vegas
                 'Rushing Yards', 'DYAR', 'QBR',  # season
                 'O-Line Sack%', 'D-Line Sack%',  # pressure
-                'Def Yds/Att', 'Def Comp%', 'Def TD%',  # matchup
+                'Pass DVOA', 'Def Yds/Att', 'Def Comp%', 'Def TD%',  # matchup
                 'Ave PPG', 'ECR', '+/- Rank',  # rankings
                 'Salary', 'Salary%',  # draftkings
                 'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
@@ -149,7 +150,7 @@ class QB(Player):
                 self.projected, self.overunder, self.line,  # vegas
                 self.rush_yds, self.pass_dyar, self.qbr,  # season stats
                 self.line_sack_rate, self.opp_sack_rate,  # pressure
-                self.opp_yds_att, self.opp_comp_perc, self.opp_td_perc,  # matchup
+                self.pass_def_rank, self.opp_yds_att, self.opp_comp_perc, self.opp_td_perc,  # matchup
                 self.average_ppg, 'rank', '+/- r',  # rankings
                 self.salary, self.salary_percent,  # draftkings
                 self.fdraft_salary, self.fdraft_salary_perc, '+/- fd',  # fdraft
@@ -175,11 +176,15 @@ class RB(Player):
         self.season_snap_percent = None
         self.season_rush_atts = None
         self.season_targets = None
+        self.season_rz_avg_targets = 0
+        self.season_rz_avg_rush_atts = 0
+        self.season_rz_opps = 0
 
         # last week
         self.snap_percentage_by_week = None  # list
         self.rush_atts_weeks = None  # dict
         self.targets_weeks = None  # list
+
         # actual last week variables
         self.last_week_snap_percent = None
         self.last_week_rush_atts = None
@@ -225,7 +230,7 @@ class RB(Player):
         return ['Position', 'Name', 'Opp', 'Abbv',   # standard
                 'Implied Total', 'O/U', 'Line',  # vegas
                 'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line',  # matchup
-                'Snap%', 'Rush ATTs', 'Targets',  # season
+                'Snap%', 'Rush ATTs', 'Targets', 'RZ Opps',  # season
                 'Snap%', 'Rush ATTs', 'Targets',  # last week
                 'Ave PPG', 'ECR', '+/- Rank',  # rankings
                 'Salary', 'Salary%',  # draftkings
@@ -236,7 +241,7 @@ class RB(Player):
         return [self.position, self.name, self.matchup, self.team_abbv,
                 self.projected, self.overunder, self.line,  # vegas
                 self.run_dvoa, self.rb_pass_dvoa, self.oline_adj_line_yds, self.opp_adj_line_yds,  # matchup
-                self.season_snap_percent, self.season_rush_atts, self.season_targets,  # season
+                self.season_snap_percent, self.season_rush_atts, self.season_targets,  self.season_rz_opps,  # season
                 self.last_week_snap_percent, self.last_week_rush_atts, self.last_week_targets,  # last week
                 self.average_ppg, 'rank', '+/- r',   # rankings
                 self.salary, self.salary_percent,  # draftkings
@@ -263,11 +268,15 @@ class WR(Player):
         self.season_snap_percent = None
         self.season_targets = None
         self.season_recepts = None
+        self.season_rz_avg_targets = 0
+        self.season_rz_avg_rush_atts = 0
+        self.season_rz_opps = 0
 
         # last week
         self.snap_percentage_by_week = None  # list
         self.recepts_weeks = None  # dict
         self.targets_weeks = None  # list
+
         # actual last week variables
         self.last_week_snap_percent = None
         self.last_week_recepts = None
@@ -313,7 +322,7 @@ class WR(Player):
         return ['Position', 'Name', 'Opp', 'Abbv',   # standard
                 'Implied Total', 'O/U', 'Line',  # vegas
                 'Pass DVOA', 'vs. WR1', 'vs. WR2',  # matchup
-                'Snap%', 'Targets', 'Recepts',  # season
+                'Snap%', 'Targets', 'Recepts', 'RZ Opps',  # season
                 'Snap%', 'Targets', 'Recepts',  # last week
                 'Ave PPG', 'ECR', '+/- Rank',  # rankings
                 'Salary', 'Salary%',  # draftkings
@@ -324,7 +333,7 @@ class WR(Player):
         return [self.position, self.name, self.matchup, self.team_abbv,  # standard
                 self.projected, self.overunder, self.line,  # vegas
                 self.pass_def_rank, self.wr1_rank, self.wr2_rank,  # matchup
-                self.season_snap_percent, self.season_targets, self.season_recepts,  # season
+                self.season_snap_percent, self.season_targets, self.season_recepts, self.season_rz_opps,  # season
                 self.last_week_snap_percent, self.last_week_targets, self.last_week_recepts,  # last week
                 self.average_ppg, 'rank', '+/- r',   # rankings
                 self.salary, self.salary_percent,  # draftkings
@@ -349,11 +358,15 @@ class TE(Player):
         self.season_snap_percent = None
         self.season_targets = None
         self.season_recepts = None
+        self.season_rz_avg_targets = 0
+        self.season_rz_avg_rush_atts = 0
+        self.season_rz_opps = 0
 
         # last week
         self.snap_percentage_by_week = None  # list
         self.recepts_weeks = None  # dict
         self.targets_weeks = None  # list
+
         # actual last week variables
         self.last_week_snap_percent = None
         self.last_week_recepts = None
@@ -401,7 +414,7 @@ class TE(Player):
         return ['Position', 'Name', 'Opp', 'Abbv',   # standard
                 'Implied Total', 'O/U', 'Line',  # vegas
                 'Pass DVOA', 'vs. TE',  # matchup
-                'Snap%', 'Targets', 'Recepts',  # season
+                'Snap%', 'Targets', 'Recepts', 'RZ Opps',  # season
                 'Snap%', 'Targets', 'Recepts',  # last week
                 'Ave PPG', 'ECR', '+/- Rank',   # rankings
                 'Salary', 'Salary%',  # draftkings
@@ -412,7 +425,7 @@ class TE(Player):
         return [self.position, self.name, self.matchup, self.team_abbv,  # standard
                 self.projected, self.overunder, self.line,  # vegas
                 self.pass_def_rank, self.te_rank,  # matchup
-                self.season_snap_percent, self.season_targets, self.season_recepts,  # season
+                self.season_snap_percent, self.season_targets, self.season_recepts, self.season_rz_opps,  # season
                 self.last_week_snap_percent, self.last_week_targets, self.last_week_recepts,  # last week
                 self.average_ppg, 'rank', '+/- r',  # rankings
                 self.salary, self.salary_percent,  # draftkings

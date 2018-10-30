@@ -102,9 +102,6 @@ def fpros_ecr(wb, position):
     table = soup.find('table', id='rank-data')
 
     if table:
-        # create worksheet
-        title = '{0}_ECR'.format(position)
-        wb.create_sheet(title=title)
         ls = []
 
         # # find header
@@ -114,7 +111,6 @@ def fpros_ecr(wb, position):
         # loop through header columns and append to worksheet
         header_cols = header_row.find_all('th')
         header = [ele.text.strip() for ele in header_cols]
-        wb[title].append(header)
         ls.append(header)
 
         # ignore notes
@@ -133,14 +129,13 @@ def fpros_ecr(wb, position):
                 txt = txt.replace('JAC', 'JAX')
                 # remove periods (T.J. Yeldon, T.Y. Hilton)
                 txt = txt.replace('.', '')
-                # really? just to fix mitchell?
+                # really? just to fix mitchell tribuski?
                 if position == 'QB':
                     txt = txt.replace('Mitch', 'Mitchell')
                 new_cols.append(txt)
 
             if cols:
                 ls.append(new_cols)
-                wb[title].append(new_cols)
 
         # return dict(zip(header, new_cols))
         return ls
@@ -191,6 +186,8 @@ def get_lineups_player_stats():
     dictionary['targets'] = get_lineups_nfl_targets()
     dictionary['receptions'] = get_lineups_nfl_receptions()
     dictionary['rush_atts'] = get_lineups_nfl_rush_atts()
+    dictionary['redzone_rushes'] = get_lineups_nfl_redzone_rush_atts()
+    dictionary['redzone_targets'] = get_lineups_nfl_redzone_targets()
     return dictionary
 
 
@@ -263,12 +260,48 @@ def get_lineups_nfl_rush_atts():
     return {massage_name(x['name']): x for x in data['data']}
 
 
+def get_lineups_nfl_redzone_rush_atts():
+    ENDPOINT = 'https://api.lineups.com/nfl/fetch/redzone-rush/2018/OFF'
+    fn = 'nfl_redzone_rushes.json'
+    dir = 'sources'
+    filename = path.join(dir, fn)
+
+    # if file doesn't exist, let's pull it. otherwise - use the file.
+    data = pull_data(filename, ENDPOINT)
+
+    if data is None:
+        raise Exception('Failed to pull data from API or file.')
+
+    # create dictionary and set key to player's full name
+    return {massage_name(x['name']): x for x in data['data']}
+
+
+def get_lineups_nfl_redzone_targets():
+    dictionary = {}
+    for position in ['RB', 'WR', 'TE']:
+        ENDPOINT = "https://api.lineups.com/nfl/fetch/redzone-targets/2018/{}".format(
+            position)
+        fn = "nfl_redzone_targets_{}.json".format(position)
+        dir = 'sources'
+        filename = path.join(dir, fn)
+
+        # if file doesn't exist, let's pull it. otherwise - use the file.
+        data = pull_data(filename, ENDPOINT)
+
+        if data is None:
+            raise Exception('Failed to pull data from API or file.')
+
+        dictionary.update({massage_name(x['full_name']): x for x in data['data']})
+    # create dictionary and set key to player's full name
+    return dictionary
+
+
 def get_nfl_def_stats(wb):
+    """Retrieve receptions from lineups.com API."""
     # https://www.lineups.com/nfl/teams/stats/defense-stats
     # get passing yds/att
     # td / att (td %)
     # att / completion (compl %)
-    """Retrieve receptions from lineups.com API."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/teams/stats/defense-stats/current'
     fn = 'nfl_def_stats.json'
     dir = 'sources'
@@ -280,11 +313,8 @@ def get_nfl_def_stats(wb):
     # we just want player data
     player_data = data['data']
 
-    # create worksheet
-    title = 'DEF_STATS'
     header = ['team abbv', 'team', 'pass_att', 'pass_yd_per_att', 'pass_compls', 'pass_yd_per_compl',
               'pass_yds', 'pass_tds', 'compl_perc', 'pass_td_per_att_perc']
-    create_sheet_header(wb, title, header)
 
     team_map = {
         'Atlanta Falcons': 'ATL',
@@ -342,8 +372,6 @@ def get_nfl_def_stats(wb):
         ls = [team_abbv, team, pass_att, pass_yd_per_att, pass_compls, pass_yd_per_compl,
               pass_yds, pass_tds, compl_perc, pass_td_per_att_perc]
 
-        wb[title].append(ls)
-
         dictionary[team_abbv] = dict(zip(header, ls))
     return dictionary
 
@@ -386,7 +414,6 @@ def get_vegas_rg(wb):
     title = 'VEGAS'
     header = ['Time', 'Team', 'Opponent', 'Line', 'MoneyLine',
               'Over/Under', 'Projected Points', 'Projected Points Change']
-    create_sheet_header(wb, title, header)
 
     # pull data
     soup = pull_soup_data(filename, ENDPOINT)
@@ -422,16 +449,6 @@ def get_vegas_rg(wb):
             'projected': matchup['projected'],
             'projectedchange': matchup['projectedchange']['value']
         }
-        wb[title].append([
-            matchup['time']['display'],
-            matchup['team'],
-            matchup['opponent'],
-            matchup['line'],
-            matchup['moneyline'],
-            matchup['overunder'],
-            matchup['projected'],
-            matchup['projectedchange']['value']
-        ])
     return dictionary
 
 
@@ -448,19 +465,15 @@ def get_dvoa_rankings(wb):
     table = soup.findAll('table')
 
     if table:
-        # create worksheet
-        title = 'TEAMDEF'
-        wb.create_sheet(title=title)
-
-        dict_team_rankings = get_dvoa_team_rankings(wb, table[0], title)
+        dict_team_rankings = get_dvoa_team_rankings(wb, table[0])
         # separate function for second table
         dict_dvoa_rankings_all = get_dvoa_recv_rankings(
-            wb, table[1], title, dict_team_rankings)
+            wb, table[1], dict_team_rankings)
 
         return dict_dvoa_rankings_all
 
 
-def get_dvoa_team_rankings(wb, soup_table, title):
+def get_dvoa_team_rankings(wb, soup_table):
     defense_stats = soup_table
 
     # find header
@@ -470,7 +483,6 @@ def get_dvoa_team_rankings(wb, soup_table, title):
     # loop through header columns and append to worksheet
     header_cols = header_row.find_all('th')
     header = [ele.text.strip() for ele in header_cols]
-    wb[title].append(header)
 
     # find the rest of the table header_rows
     rows = defense_stats.find_all('tr')
@@ -496,51 +508,14 @@ def get_dvoa_team_rankings(wb, soup_table, title):
             # map key_names to cols
 
             return_dict[key] = dict(zip(key_names, cols))
-
-            # print columns to worksheet
-            wb[title].append(cols)
     return return_dict
 
 
-def get_dvoa_recv_rankings(wb, soup_table, title, dict_team_rankings):
+def get_dvoa_recv_rankings(wb, soup_table, dict_team_rankings):
     # VS types of receivers
     def_recv_stats = soup_table
     table_header = def_recv_stats.find('thead')
     header_rows = table_header.find_all('tr')
-
-    # style for merge + center
-    al = Alignment(horizontal="center", vertical="center")
-
-    # there are two header rows
-    for i, row in enumerate(header_rows):
-        header_cols = row.find_all('th')
-        header = [ele.text.strip() for ele in header_cols]
-        # first header row has some merged cells
-        if i == 0:
-            # merge + center
-            wb[title]['C35'] = header[2]  # vs. WR1
-            wb[title].merge_cells('C35:F35')
-            style_range(wb[title], 'C35:F35', alignment=al)
-            wb[title]['G35'] = header[3]  # vs. WR2
-            wb[title].merge_cells('G35:J35')
-            style_range(wb[title], 'G35:J35', alignment=al)
-            wb[title]['K35'] = header[4]  # vs. OTHER
-            wb[title].merge_cells('K35:N35')
-            style_range(wb[title], 'K35:N35', alignment=al)
-            wb[title]['O35'] = header[5]  # vs. TE
-            wb[title].merge_cells('O35:R35')
-            style_range(wb[title], 'O35:R35', alignment=al)
-            wb[title]['S35'] = header[6]  # vs. RB
-            wb[title].merge_cells('S35:V35')
-            style_range(wb[title], 'S35:V35', alignment=al)
-        elif i == 1:
-            wb[title].append(header)
-        # for c in cols:
-        #     print(c.get_text(strip=True))
-        # print(cols)
-
-        # create_sheet_header(wb, title, header)
-        # print(header)
 
     rows = def_recv_stats.find_all('tr')
     for row in rows:
@@ -560,8 +535,6 @@ def get_dvoa_recv_rankings(wb, soup_table, title, dict_team_rankings):
 
             # map key_names to cols
             dict_team_rankings[key].update(dict(zip(key_names, cols)))
-
-            wb[title].append(cols)
 
     return dict_team_rankings
 
@@ -589,13 +562,6 @@ def get_line_rankings(wb):
         table = soup.findAll('table')
 
         if table:
-            # create worksheet
-            if line == 'ol':
-                title = 'OLINE'
-            elif line == 'dl':
-                title = 'DLINE'
-            wb.create_sheet(title=title)
-
             # store table
             line_stats = table[0]
             # find header
@@ -605,7 +571,6 @@ def get_line_rankings(wb):
             # loop through header columns and append to worksheet
             header_cols = header_row.find_all('th')
             header = [ele.text.strip() for ele in header_cols]
-            wb[title].append(header)
 
             # find the rest of the table header_rows
             rows = line_stats.find_all('tr')
@@ -618,7 +583,7 @@ def get_line_rankings(wb):
                     run_key = cols.pop(1)
 
                     # pop 'team_abbv' for pass protection
-                    pass_key = cols.pop(11)
+                    # pass_key = cols.pop(11)
 
                     run_key_names = ['rank', 'adj_line_yds', 'rb_yds', 'power_succ_perc', 'power_rank',
                                      'stuff_perc', 'stuff_rank', '2nd_lvl_yds', '2nd_lvl_rank',
@@ -630,14 +595,24 @@ def get_line_rankings(wb):
                     # map o-line to 'run' key
                     dictionary[line]['run'][run_key] = dict(zip(run_key_names, cols))
                     # map d-line to 'pass' key
-                    dictionary[line]['pass'][pass_key] = dict(
+                    # dictionary[line]['pass'][pass_key] = dict(
+                    # zip(pass_key_names, cols[-3:]))
+                    dictionary[line]['pass'][run_key] = dict(
                         zip(pass_key_names, cols[-3:]))
                     # example
                     # dictionary['ol']['run']['LAR']['adj_line_yds'] = 6.969
                     # dictionary['dl']['pass']['MIA']['adj_sack_rate'] = 4.5%
-
-                    wb[title].append(cols)
     return dictionary
+
+
+def get_matchup_info(game_info, team_abbv):
+    # split game info into matchup_info
+    home_team, away_team = game_info.split(' ', 1)[0].split('@')
+    if team_abbv == home_team:
+        matchup_info = "vs. {}".format(away_team)
+    else:
+        matchup_info = "at {}".format(home_team)
+    return matchup_info
 
 
 def qb_map(key):
@@ -703,10 +678,6 @@ def get_qb_stats_FO(wb):
     table = soup.findAll('table')
 
     if table:
-        # create worksheet
-        title = 'QB_STATS'
-        wb.create_sheet(title=title)
-
         dictionary = {}
         for i, t in enumerate(table):
             # find header
@@ -716,7 +687,6 @@ def get_qb_stats_FO(wb):
             # loop through header columns and append to worksheet
             header_cols = header_row.find_all('th')
             header = [ele.text.strip() for ele in header_cols]
-            wb[title].append(header)
 
             # find the rest of the table header_rows
             rows = t.find_all('tr')
@@ -746,8 +716,6 @@ def get_qb_stats_FO(wb):
                     if player_name not in dictionary:
                         dictionary[player_name] = dict.fromkeys(main_fields, None)
                     dictionary[player_name].update(dict(zip(key_names, cols)))
-
-                    wb[title].append(cols)
     return dictionary
 
 
@@ -843,6 +811,7 @@ def excel_apply_format_row(ws, row_num):
 
 
 def excel_insert_ranks(wb):
+    """In each positional tab, find columns from header and fill in ranks."""
     header_row_num = 2
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
         ws = wb[position]
@@ -926,7 +895,6 @@ def excel_insert_ranks(wb):
 
 def excel_write_top_level_header(ws, player):
     """Write the top most header row with merged cells and colors."""
-
     # colors
     color_white = 'FF000000'
     color_yellow = 'FFFFC000'
@@ -948,25 +916,25 @@ def excel_write_top_level_header(ws, player):
                         'PRESSURE', 'MATCHUP', 'RANKINGS', 'DK', 'FDRAFT']
         dictionary['SEASON'] = {'length': 3, 'color': color_light_blue}
         dictionary['PRESSURE'] = {'length': 2, 'color': color_darker_blue}
-        dictionary['MATCHUP'] = {'length': 3, 'color': color_orange}
+        dictionary['MATCHUP'] = {'length': 4, 'color': color_orange}
     elif player.position == 'RB':
         header_order = ['VEGAS', 'MATCHUP',
                         'SEASON', 'LAST WEEK', 'RANKINGS', 'DK', 'FDRAFT']
         dictionary['MATCHUP'] = {'length': 4, 'color': color_orange}
-        dictionary['SEASON'] = {'length': 3, 'color': color_light_blue}
+        dictionary['SEASON'] = {'length': 4, 'color': color_light_blue}
         dictionary['LAST WEEK'] = {'length': 3, 'color': color_darker_blue}
     elif player.position == 'WR':
         header_order = ['VEGAS', 'MATCHUP',
                         'SEASON', 'LAST WEEK', 'RANKINGS', 'DK', 'FDRAFT']
         dictionary['MATCHUP'] = {'length': 3, 'color': color_orange}
-        dictionary['SEASON'] = {'length': 3, 'color': color_light_blue}
+        dictionary['SEASON'] = {'length': 4, 'color': color_light_blue}
         dictionary['LAST WEEK'] = {'length': 3, 'color': color_darker_blue}
 
     elif player.position == 'TE':
         header_order = ['VEGAS', 'MATCHUP',
                         'SEASON', 'LAST WEEK', 'RANKINGS', 'DK', 'FDRAFT']
         dictionary['MATCHUP'] = {'length': 2, 'color': color_orange}
-        dictionary['SEASON'] = {'length': 3, 'color': color_light_blue}
+        dictionary['SEASON'] = {'length': 4, 'color': color_light_blue}
         dictionary['LAST WEEK'] = {'length': 3, 'color': color_darker_blue}
     elif player.position == 'DST':
         header_order = ['VEGAS', 'RANKINGS', 'DK', 'FDRAFT']
@@ -1041,6 +1009,7 @@ def excel_apply_borders(wb):
 
 
 def find_fields_in_header(ws, search_fields):
+    """Search one ws header for many fields. Return indices of header to be numberified."""
     header_row = 2
     columns = []
     for cell in ws[header_row]:
@@ -1048,8 +1017,6 @@ def find_fields_in_header(ws, search_fields):
             columns.append(cell.column)
             continue
     return columns
-# search one ws header for many fields
-# return indices of header to be numberified
 
 
 def excel_apply_format_header(wb):
@@ -1133,7 +1100,8 @@ def excel_apply_conditional_formatting(wb):
         green_to_red_headers = [
             'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
             'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'Recepts', 'vs. TE',
-            'Ave PPG', 'Rushing Yards', 'DYAR', 'QBR', 'Def Yds/Att', 'Def Comp%', 'Def TD%'
+            'Ave PPG', 'Rushing Yards', 'DYAR', 'QBR', 'Def Yds/Att', 'Def Comp%', 'Def TD%',
+            'RZ Opps'
         ]
         green_to_red_rule = ColorScaleRule(start_type='min', start_color=red,
                                            mid_type='percentile', mid_value=50, mid_color=yellow,
@@ -1168,7 +1136,6 @@ def excel_apply_conditional_formatting(wb):
 
 def excel_apply_hide_columns(wb):
     header_row_num = 2
-
     hidden_columns = ['Abbv', 'ECR Data', 'Salary Rank', 'FDraft Salary Rank']
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
         ws = wb[position]
@@ -1183,7 +1150,7 @@ def excel_apply_header_freeze(wb):
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
         ws = wb[position]
         # panes frozen are above and to the left of the cell frozen
-        ws.freeze_panes = 'D3'
+        ws.freeze_panes = "D{}".format(row_id)
         # max_row = ws.max_row
         # ws.freeze_panes = "{0}{row_id}".format(
         #     get_column_letter(ws.max_column), row_id=row_id)
@@ -1199,6 +1166,7 @@ def excel_apply_filter_setup(wb):
 
 
 def excel_apply_sheet_order(wb):
+    """Re-order sheet tabs using private variable."""
     # pull indices from QB, RB, WR, TE, DST to be ordered first
     order = [wb.worksheets.index(wb[i]) for i in ['QB', 'RB', 'WR', 'TE', 'DST']]
 
@@ -1209,7 +1177,7 @@ def excel_apply_sheet_order(wb):
 
 
 def main():
-    fn = 'DKSalaries_week8_full.csv'
+    fn = 'DKSalaries_week9_full.csv'
     dest_filename = 'player_sheet.xlsx'
 
     # create workbook/worksheet
@@ -1234,7 +1202,7 @@ def main():
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
         ecr_pos_dict[position] = fpros_ecr(wb, position)
 
-    fdraft_csv = 'FDraft_week8_full.csv'
+    fdraft_csv = 'FDraft_week9_full.csv'
     if path.exists(fdraft_csv):
         fdraft_dict = read_fantasy_draft_csv(fdraft_csv)
     else:
@@ -1277,6 +1245,7 @@ def main():
             # also remove periods (T.J. Yeldon for example)
             name = name.replace('.', '')
 
+            matchup = get_matchup_info(game_info, team_abbv)
             # use team_abbv for DSTs
             if position == 'DST':
                 name = fields[7]
@@ -1286,10 +1255,15 @@ def main():
             if ecr_item:
                 # ecr_rank, ecr_wsis, ecr_dumb_name, ecr_matchup, ecr_best, ecr_worse, ecr_avg, ecr_std_dev = ecr_item
                 ecr_rank = ecr_item[0]
-                ecr_matchup = ecr_item[3]
+                # if position == 'DST':
+                #     print(fields)
+                #     print("{}".format(ecr_item))
+                #     print("Name: {} matchup: {}".format(name, matchup))
+                #     print()
+
                 # create Player class for position
                 p = Player(name, position, team_abbv, salary, game_info,
-                           average_ppg, ecr_matchup, ecr_rank)
+                           average_ppg, matchup, ecr_rank)
 
                 if fdraft_dict:
                     p.set_fdraft_fields(fdraft_dict[name]['salary'],
@@ -1318,7 +1292,9 @@ def main():
                     else:
                         print("Could find no QB information on {}".format(name))
 
+                    # check for opponent in def_dict
                     if p.opponent in def_dict:
+                        qb.pass_def_rank = dvoa_dict[p.opponent]['pass_def_rank']
                         qb.opp_yds_att = def_dict[p.opponent]['pass_yd_per_att']
                         qb.opp_comp_perc = def_dict[p.opponent]['compl_perc']
                         qb.opp_td_perc = def_dict[p.opponent]['pass_td_per_att_perc']
@@ -1335,7 +1311,7 @@ def main():
                     rb.set_line_fields(line_dict['ol']['run'][team_abbv]['adj_line_yds'],
                                        line_dict['dl']['run'][p.opponent]['adj_line_yds'])
                     if name in stats_dict['snaps']:
-                        rb.set_season_fields(stats_dict['snaps'][name]['average'],
+                        rb.set_season_fields(stats_dict['snaps'][name]['season_snap_percent'],
                                              stats_dict['rush_atts'][name]['average'],
                                              stats_dict['targets'][name]['average'])
 
@@ -1348,6 +1324,14 @@ def main():
                     else:
                         print("Could find no SNAPS information on {} [{}]".format(
                             name, position))
+
+                    # look for redzone opportunities
+                    if name in stats_dict['redzone_targets']:
+                        rb.season_rz_avg_targets = stats_dict['redzone_targets'][name]['average']
+                    if name in stats_dict['redzone_rushes']:
+                        rb.season_rz_avg_rush_atts = stats_dict['redzone_rushes'][name]['average']
+
+                    rb.season_rz_opps = rb.season_rz_avg_targets + rb.season_rz_avg_rush_atts
 
                     # call class method to set fields for last week
                     player_list.append(rb)
@@ -1372,6 +1356,10 @@ def main():
                     else:
                         print("Could find no SNAPS information on {} [{}]".format(
                             name, position))
+
+                    if name in stats_dict['redzone_targets']:
+                        wr.season_rz_avg_targets = stats_dict['redzone_targets'][name]['average']
+
                     player_list.append(wr)
                 elif position == 'TE':
                     te = TE(p)
@@ -1399,6 +1387,10 @@ def main():
                     else:
                         print("Could find no SNAPS information on {} [{}]".format(
                             name, position))
+
+                    if name in stats_dict['redzone_targets']:
+                        te.season_rz_avg_targets = stats_dict['redzone_targets'][name]['average']
+
                     player_list.append(te)
                 elif position == 'DST':
                     dst = DST(p)
@@ -1408,9 +1400,7 @@ def main():
     # for k, v in player_dict.items():
     #     print("k: {}".format(k))
     #     print("v: {}".format(v))
-    for i, player in enumerate(player_list):
-        # if player.position == 'QB':
-            # excel_write_position_to_sheet(wb, player)
+    for player in player_list:
         excel_write_position_to_sheet(wb, player)
 
     # apply Excel functions
