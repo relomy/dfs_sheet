@@ -1371,13 +1371,16 @@ def main():
                 elif position == 'WR':
                     wr = WR(p)
                     # set position-specific dvoa fields
-                    wr.set_dvoa_fields(dvoa_dict[p.opponent]['pass_def_rank'],
-                                       dvoa_dict[p.opponent]['wr1_rank'], dvoa_dict[p.opponent]['wr2_rank'])
+                    wr.pass_def_rank = dvoa_dict[p.opponent]['pass_def_rank']
+                    wr.wr1_rank = dvoa_dict[p.opponent]['wr1_rank']
+                    wr.wr2_rank = dvoa_dict[p.opponent]['wr2_rank']
+
                     # if player is not in snaps, he likely has no other information either
                     if name in stats_dict['snaps']:
-                        wr.set_season_fields(stats_dict['snaps'][name]['season_snap_percent'],
-                                             stats_dict['targets'][name]['average'],
-                                             stats_dict['receptions'][name]['average'])
+                        # set season numbers
+                        wr.season_snap_percent = stats_dict['snaps'][name]['season_snap_percent']
+                        wr.season_rush_atts = stats_dict['rush_atts'][name]['average']
+                        wr.season_targets = stats_dict['targets'][name]['average']
 
                         # store lists in Player object
                         wr.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
@@ -1422,12 +1425,15 @@ def main():
                 elif position == 'TE':
                     te = TE(p)
                     # set position-specific dvoa fields
-                    te.set_dvoa_fields(
-                        dvoa_dict[p.opponent]['pass_def_rank'], dvoa_dict[p.opponent]['te_rank'])
+                    te.pass_def_rank = dvoa_dict[p.opponent]['pass_def_rank']
+                    te.te_rank = dvoa_dict[p.opponent]['te_rank']
+
                     if name in stats_dict['snaps']:
-                        te.set_season_fields(stats_dict['snaps'][name]['season_snap_percent'],
-                                             stats_dict['targets'][name]['average'],
-                                             stats_dict['receptions'][name]['average'])
+                        # set season numbers
+                        te.season_snap_percent = stats_dict['snaps'][name]['season_snap_percent']
+                        te.season_rush_atts = stats_dict['rush_atts'][name]['average']
+                        te.season_targets = stats_dict['targets'][name]['average']
+
                         te.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
                         te.recepts_weeks = stats_dict['receptions'][name]['weeks']
                         te.targets_weeks = stats_dict['targets'][name]['weeks']

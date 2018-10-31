@@ -282,16 +282,6 @@ class WR(Player):
         self.last_week_recepts = None
         self.last_week_targets = None
 
-    def set_dvoa_fields(self, pass_def_rank, wr1_rank, wr2_rank):
-        self.pass_def_rank = pass_def_rank
-        self.wr1_rank = wr1_rank
-        self.wr2_rank = wr2_rank
-
-    def set_season_fields(self, season_snap_percent, season_targets, season_recepts):
-        self.season_snap_percent = season_snap_percent
-        self.season_targets = season_targets
-        self.season_recepts = season_recepts
-
     def set_last_week_fields(self):
         self.last_week_snap_percent = self.get_last_week_snaps()
         self.last_week_recepts = self.get_last_week_recepts()
@@ -390,15 +380,6 @@ class TE(Player):
         self.last_week_snap_percent = None
         self.last_week_recepts = None
         self.last_week_targets = None
-
-    def set_dvoa_fields(self, pass_def_rank, te_rank):
-        self.pass_def_rank = pass_def_rank
-        self.te_rank = te_rank
-
-    def set_season_fields(self, season_snap_percent, season_targets, season_recepts):
-        self.season_snap_percent = season_snap_percent
-        self.season_targets = season_targets
-        self.season_recepts = season_recepts
 
     def set_last_week_fields(self):
         self.last_week_snap_percent = self.get_last_week_snaps()
