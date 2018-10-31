@@ -524,9 +524,9 @@ def get_dvoa_recv_rankings(wb, soup_table, dict_team_rankings):
 
         if cols:
             # pop 'team_abbv' for dict key
-            key = cols.pop(1)
+            key = cols.pop(0)
 
-            key_names = ['rk', 'wr1_dvoa', 'wr1_rank', 'wr1_pa_g', 'wr1_yd_g',
+            key_names = ['wr1_dvoa', 'wr1_rank', 'wr1_pa_g', 'wr1_yd_g',
                          'wr2_dvoa', 'wr2_rank', 'wr2_pa_g', 'wr2_yd_g',
                          'wro_dvoa', 'wro_rank', 'wro_pa_g', 'wro_yd_g',
                          'te_dvoa', 'te_rank', 'te_pa_g', 'te_yd_g',
@@ -692,16 +692,20 @@ def get_qb_stats_FO(wb):
             rows = t.find_all('tr')
             for row in rows:
                 cols = row.find_all('td')
-                cols = [ele.text.strip() for ele in cols]
+                cols = [ele.text.strip().replace(',', '') for ele in cols]
                 if cols:
                     # pop 'name' for dict key
                     key = cols.pop(0)
 
                     # i only create this list because Lamar Jackson has no pass_dyar but he has rushing stats
-                    main_fields = ['team', 'pass_dyar', 'dyar_rank', 'yar', 'yar_rank', 'pass_dvoa', 'pass_dvoa_rank', 'voa', 'qbr',
-                                   'qbr_rank', 'pass_atts', 'pass_yds', 'eyds', 'tds', 'fk', 'fl', 'int', 'c_perc', 'dpi', 'alex']
+                    # also Nathan Peterman has no rushing yds..
+                    main_fields = ['team', 'pass_dyar', 'dyar_rank', 'yar', 'yar_rank', 'pass_dvoa', 'pass_dvoa_rank', 'voa',
+                                   'qbr', 'qbr_rank', 'pass_atts', 'pass_yds', 'eyds', 'tds', 'fk', 'fl', 'int', 'c_perc', 'dpi', 'alex',
+                                   'rush_dyar', 'rush_dyar_rank', 'rush_yar', 'rush_yar_rank', 'rush_dvoa', 'rush_dvoa_rank', 'rush_voa', 'rush_atts', 'rush_yds', 'rush_eyds', 'rush_tds', 'fumbles']
                     if i == 0:
-                        key_names = main_fields
+                        key_names = ['team', 'pass_dyar', 'dyar_rank', 'yar', 'yar_rank', 'pass_dvoa', 'pass_dvoa_rank',
+                                     'voa', 'qbr', 'qbr_rank', 'pass_atts', 'pass_yds', 'eyds', 'tds', 'fk', 'fl',
+                                     'int', 'c_perc', 'dpi', 'alex']
                     elif i == 1:
                         key_names = ['team', 'pass_dyar', 'pass_dvoa', 'pass_dvoa_rank', 'voa', 'qbr',
                                      'qbr_rank', 'pass_atts', 'pass_yds', 'eyds', 'tds', 'fk', 'fl', 'int', 'c_perc', 'dpi', 'alex']
@@ -711,6 +715,7 @@ def get_qb_stats_FO(wb):
 
                     # print(key)
                     # map key_names to cols
+
                     player_name = qb_map(key)
                     # create dictionary if it does not exist
                     if player_name not in dictionary:
@@ -721,7 +726,9 @@ def get_qb_stats_FO(wb):
 
 def find_name_in_ecr(ecr_pos_list, name):
     for item in ecr_pos_list:
-        if any(name in s for s in item):
+        # if any(name in s for s in item):
+        # look in 2nd column for name
+        if len(item) > 2 and name in item[2]:
             # print("Found {}!".format(name))
             # rank, wsis, dumb_name, matchup, best, worse, avg, std_dev = item
             return item
@@ -922,20 +929,20 @@ def excel_write_top_level_header(ws, player):
                         'SEASON', 'LAST WEEK', 'RANKINGS', 'DK', 'FDRAFT']
         dictionary['MATCHUP'] = {'length': 4, 'color': color_orange}
         dictionary['SEASON'] = {'length': 4, 'color': color_light_blue}
-        dictionary['LAST WEEK'] = {'length': 3, 'color': color_darker_blue}
+        dictionary['LAST WEEK'] = {'length': 4, 'color': color_darker_blue}
     elif player.position == 'WR':
         header_order = ['VEGAS', 'MATCHUP',
                         'SEASON', 'LAST WEEK', 'RANKINGS', 'DK', 'FDRAFT']
         dictionary['MATCHUP'] = {'length': 3, 'color': color_orange}
         dictionary['SEASON'] = {'length': 4, 'color': color_light_blue}
-        dictionary['LAST WEEK'] = {'length': 3, 'color': color_darker_blue}
+        dictionary['LAST WEEK'] = {'length': 4, 'color': color_darker_blue}
 
     elif player.position == 'TE':
         header_order = ['VEGAS', 'MATCHUP',
                         'SEASON', 'LAST WEEK', 'RANKINGS', 'DK', 'FDRAFT']
         dictionary['MATCHUP'] = {'length': 2, 'color': color_orange}
         dictionary['SEASON'] = {'length': 4, 'color': color_light_blue}
-        dictionary['LAST WEEK'] = {'length': 3, 'color': color_darker_blue}
+        dictionary['LAST WEEK'] = {'length': 4, 'color': color_darker_blue}
     elif player.position == 'DST':
         header_order = ['VEGAS', 'RANKINGS', 'DK', 'FDRAFT']
 
@@ -959,13 +966,15 @@ def excel_merge_top_header(ws, text, start_col, length, color):
     # we actually want the length to be inclusive of the start column
     length -= 1
 
+    # get coloumn index from string
+    start_col_idx = column_index_from_string(start_col)
+
     # insert text into cell
-    ws.cell(row=1, column=column_index_from_string(start_col)).value = text
-    # column_index_from_string == order(col_idx)?
+    ws.cell(row=1, column=start_col_idx).value = text
+
     # set range to format merged cells
     fmt_range = "{0}{row_num}:{1}{row_num}".format(
-        start_col, chr(ord(start_col) + length), row_num=row_num)
-    # print("[excel_merge_top_header]: fmt_range: {}".format(fmt_range))
+        start_col, get_column_letter(start_col_idx + length), row_num=row_num)
     # fmt_range = "{0}1:{1}1".format(get_column_letter(
     #     start_col), get_column_letter(start_col + length))
     style_range(ws, fmt_range, font=font, fill=PatternFill(
@@ -1064,18 +1073,16 @@ def excel_apply_column_widths(wb):
             # print(cell)
             if cell.value == 'Name':
                 ws.column_dimensions[get_column_letter(i + 1)].width = 20
-            # elif cell.value == 'Opp':
-            #     ws.column_dimensions[get_column_letter(i + 1)].width = 10
-            elif cell.value == 'Position':
-                ws.column_dimensions[get_column_letter(i + 1)].width = 8
-            elif cell.value == 'FD Salary':
+            elif cell.value in ['FD Salary', 'Opp']:
                 ws.column_dimensions[get_column_letter(i + 1)].width = 9
-            elif cell.value == '+/- Rank' or cell.value == 'Line':
-                ws.column_dimensions[get_column_letter(i + 1)].width = 5
-            elif cell.value == 'FD +/- Rank':
+            elif cell.value in ['Position']:
+                ws.column_dimensions[get_column_letter(i + 1)].width = 8
+            elif cell.value in ['FD +/- Rank']:
                 ws.column_dimensions[get_column_letter(i + 1)].width = 6
+            elif cell.value in ['+/- Rank', 'Line', 'ECR']:
+                ws.column_dimensions[get_column_letter(i + 1)].width = 5
             else:
-                ws.column_dimensions[get_column_letter(i + 1)].width = 7.7
+                ws.column_dimensions[get_column_letter(i + 1)].width = 7
 
 
 def excel_apply_conditional_formatting(wb):
@@ -1098,9 +1105,9 @@ def excel_apply_conditional_formatting(wb):
         # ws.auto_filter.add_sort_condition(sort_range)
         # bigger/positive = green, smaller/negative = red
         green_to_red_headers = [
-            'Implied Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
-            'O-Line', 'Snap%', 'Rush ATTs', 'Targets', 'Recepts', 'vs. TE',
-            'Ave PPG', 'Rushing Yards', 'DYAR', 'QBR', 'Def Yds/Att', 'Def Comp%', 'Def TD%',
+            'Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
+            'O-Line', 'Snap%', 'Rush ATTs', 'Trgts', 'Rcpts', 'vs. TE',
+            'Ave PPG', 'Rush Yards', 'DYAR', 'QBR', 'Def Yds/Att', 'Def Comp%', 'Def TD%',
             'RZ Opps'
         ]
         green_to_red_rule = ColorScaleRule(start_type='min', start_color=red,
@@ -1304,22 +1311,27 @@ def main():
                     player_list.append(qb)
                 elif position == 'RB':
                     rb = RB(p)
+
                     # set position-specific dvoa fields
-                    rb.set_dvoa_fields(
-                        dvoa_dict[p.opponent]['rush_def_rank'], dvoa_dict[p.opponent]['rb_rank'])
+                    rb.run_dvoa = dvoa_dict[p.opponent]['rush_def_rank']
+                    rb.rb_pass_dvoa = dvoa_dict[p.opponent]['rb_rank']
+
                     # set oline/opponent dline stats for adjusted line yards
-                    rb.set_line_fields(line_dict['ol']['run'][team_abbv]['adj_line_yds'],
-                                       line_dict['dl']['run'][p.opponent]['adj_line_yds'])
+                    rb.oline_adj_line_yds = line_dict['ol']['run'][team_abbv]['adj_line_yds']
+                    rb.opp_adj_line_yds = line_dict['dl']['run'][p.opponent]['adj_line_yds']
+
                     if name in stats_dict['snaps']:
-                        rb.set_season_fields(stats_dict['snaps'][name]['season_snap_percent'],
-                                             stats_dict['rush_atts'][name]['average'],
-                                             stats_dict['targets'][name]['average'])
+                        # set season numbers
+                        rb.season_snap_percent = stats_dict['snaps'][name]['season_snap_percent']
+                        rb.season_rush_atts = stats_dict['rush_atts'][name]['average']
+                        rb.season_targets = stats_dict['targets'][name]['average']
 
                         # store lists in Player object
                         rb.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
                         rb.rush_atts_weeks = stats_dict['rush_atts'][name]['weeks']
                         rb.targets_weeks = stats_dict['targets'][name]['weeks']
-                        # rb.set_last_week_fields('x', 'x', 'x')
+
+                        # currently need a class method here to calculate/set last weeks snaps/etc stats
                         rb.set_last_week_fields()
                     else:
                         print("Could find no SNAPS information on {} [{}]".format(
@@ -1328,11 +1340,32 @@ def main():
                     # look for redzone opportunities
                     if name in stats_dict['redzone_targets']:
                         rb.season_rz_avg_targets = stats_dict['redzone_targets'][name]['average']
+                        rb.rz_targets_weeks = stats_dict['redzone_targets'][name]['weeks']
                     if name in stats_dict['redzone_rushes']:
                         rb.season_rz_avg_rush_atts = stats_dict['redzone_rushes'][name]['average']
+                        rb.rz_rush_atts_weeks = stats_dict['redzone_rushes'][name]['weeks']
 
                     rb.season_rz_opps = rb.season_rz_avg_targets + rb.season_rz_avg_rush_atts
 
+                    # store lists in Player object
+
+                    # currently need a class method here to calculate/set last weeks snaps/etc stats
+                    rb.set_last_week_rz_fields()
+
+                    if rb.last_week_rz_rush_atts is None and rb.last_week_rz_targets is None:
+                        rb.last_week_rz_opps = 0
+                    else:
+                        if rb.last_week_rz_rush_atts is None:
+                            rb.last_week_rz_rush_atts = 0
+
+                        if rb.last_week_rz_targets is None:
+                            rb.last_week_rz_targets = 0
+                        rb.last_week_rz_opps = rb.last_week_rz_rush_atts + rb.last_week_rz_targets
+
+                    # print("[{}] rush: {} + targets: {} = opps: {}".format(rb.name,
+                    #                                                       rb.last_week_rz_rush_atts,
+                    #                                                       rb.last_week_rz_targets,
+                    #                                                       rb.last_week_rz_opps))
                     # call class method to set fields for last week
                     player_list.append(rb)
                 elif position == 'WR':
@@ -1342,7 +1375,7 @@ def main():
                                        dvoa_dict[p.opponent]['wr1_rank'], dvoa_dict[p.opponent]['wr2_rank'])
                     # if player is not in snaps, he likely has no other information either
                     if name in stats_dict['snaps']:
-                        wr.set_season_fields(stats_dict['snaps'][name]['average'],
+                        wr.set_season_fields(stats_dict['snaps'][name]['season_snap_percent'],
                                              stats_dict['targets'][name]['average'],
                                              stats_dict['receptions'][name]['average'])
 
@@ -1357,8 +1390,33 @@ def main():
                         print("Could find no SNAPS information on {} [{}]".format(
                             name, position))
 
+                    # look for redzone opportunities
                     if name in stats_dict['redzone_targets']:
                         wr.season_rz_avg_targets = stats_dict['redzone_targets'][name]['average']
+                        wr.rz_targets_weeks = stats_dict['redzone_targets'][name]['weeks']
+                    if name in stats_dict['redzone_rushes']:
+                        wr.season_rz_avg_rush_atts = stats_dict['redzone_rushes'][name]['average']
+                        wr.rz_rush_atts_weeks = stats_dict['redzone_rushes'][name]['weeks']
+
+                    wr.season_rz_opps = wr.season_rz_avg_targets + wr.season_rz_avg_rush_atts
+
+                    # currently need a class method here to calculate/set last weeks snaps/etc stats
+                    wr.set_last_week_rz_fields()
+
+                    if wr.last_week_rz_rush_atts is None and wr.last_week_rz_targets is None:
+                        wr.last_week_rz_opps = 0
+                    else:
+                        if wr.last_week_rz_rush_atts is None:
+                            wr.last_week_rz_rush_atts = 0
+
+                        if wr.last_week_rz_targets is None:
+                            wr.last_week_rz_targets = 0
+                        wr.last_week_rz_opps = wr.last_week_rz_rush_atts + wr.last_week_rz_targets
+
+                    # print("[{}] rush: {} + targets: {} = opps: {}".format(wr.name,
+                    #                                                       wr.last_week_rz_rush_atts,
+                    #                                                       wr.last_week_rz_targets,
+                    #                                                       wr.last_week_rz_opps))
 
                     player_list.append(wr)
                 elif position == 'TE':
@@ -1367,7 +1425,7 @@ def main():
                     te.set_dvoa_fields(
                         dvoa_dict[p.opponent]['pass_def_rank'], dvoa_dict[p.opponent]['te_rank'])
                     if name in stats_dict['snaps']:
-                        te.set_season_fields(stats_dict['snaps'][name]['average'],
+                        te.set_season_fields(stats_dict['snaps'][name]['season_snap_percent'],
                                              stats_dict['targets'][name]['average'],
                                              stats_dict['receptions'][name]['average'])
                         te.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
@@ -1388,18 +1446,41 @@ def main():
                         print("Could find no SNAPS information on {} [{}]".format(
                             name, position))
 
+                    # look for redzone opportunities
                     if name in stats_dict['redzone_targets']:
                         te.season_rz_avg_targets = stats_dict['redzone_targets'][name]['average']
+                        te.rz_targets_weeks = stats_dict['redzone_targets'][name]['weeks']
+                    if name in stats_dict['redzone_rushes']:
+                        te.season_rz_avg_rush_atts = stats_dict['redzone_rushes'][name]['average']
+                        te.rz_rush_atts_weeks = stats_dict['redzone_rushes'][name]['weeks']
+
+                    te.season_rz_opps = te.season_rz_avg_targets + te.season_rz_avg_rush_atts
+
+                    # currently need a class method here to calculate/set last weeks snaps/etc stats
+                    te.set_last_week_rz_fields()
+
+                    if te.last_week_rz_rush_atts is None and te.last_week_rz_targets is None:
+                        te.last_week_rz_opps = 0
+                    else:
+                        if te.last_week_rz_rush_atts is None:
+                            te.last_week_rz_rush_atts = 0
+
+                        if te.last_week_rz_targets is None:
+                            te.last_week_rz_targets = 0
+                        te.last_week_rz_opps = te.last_week_rz_rush_atts + te.last_week_rz_targets
+
+                    # print("[{}] rush: {} + targets: {} = opps: {}".format(te.name,
+                    #                                                       te.last_week_rz_rush_atts,
+                    #                                                       te.last_week_rz_targets,
+                    #                                                       te.last_week_rz_opps))
 
                     player_list.append(te)
                 elif position == 'DST':
                     dst = DST(p)
                     player_list.append(dst)
-            # position_tab(wb, fields, fields[0])
+            # else:
+            #     print("{} not found in ECR rankings".format(name))
 
-    # for k, v in player_dict.items():
-    #     print("k: {}".format(k))
-    #     print("v: {}".format(v))
     for player in player_list:
         excel_write_position_to_sheet(wb, player)
 

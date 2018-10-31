@@ -119,25 +119,10 @@ class QB(Player):
         self.opp_comp_perc = None
         self.opp_td_perc = None
 
-    def set_sack_fields(self, line_sack_rate, opp_sack_rate):
-        self.line_sack_rate = line_sack_rate
-        self.opp_sack_rate = opp_sack_rate
-
-    def set_matchup_fields(self, opp_yds_att, opp_comp_perc, opp_td_perc):
-        self.opp_yds_att = opp_yds_att
-        self.opp_comp_perc = opp_comp_perc
-        self.opp_td_perc = opp_td_perc
-
-    def set_season_fields(self, rush_yds, pass_dyar, qbr):
-        self.rush_yds = rush_yds
-        self.pass_dyar = pass_dyar
-        self.qbr = qbr
-    # def set_matchup_fields(self, opp_)
-
     def get_writable_header(self):
         return ['Position', 'Name', 'Opp', 'Abbv',   # standard
-                'Implied Total', 'O/U', 'Line',  # vegas
-                'Rushing Yards', 'DYAR', 'QBR',  # season
+                'Total', 'O/U', 'Line',  # vegas
+                'Rush Yards', 'DYAR', 'QBR',  # season
                 'O-Line Sack%', 'D-Line Sack%',  # pressure
                 'Pass DVOA', 'Def Yds/Att', 'Def Comp%', 'Def TD%',  # matchup
                 'Ave PPG', 'ECR', '+/- Rank',  # rankings
@@ -184,29 +169,25 @@ class RB(Player):
         self.snap_percentage_by_week = None  # list
         self.rush_atts_weeks = None  # dict
         self.targets_weeks = None  # list
+        self.rz_targets_weeks = None  # list
+        self.rz_rush_atts_weeks = None  # dict
 
         # actual last week variables
         self.last_week_snap_percent = None
         self.last_week_rush_atts = None
         self.last_week_targets = None
-
-    def set_dvoa_fields(self, run_dvoa, rb_pass_dvoa):
-        self.run_dvoa = run_dvoa
-        self.rb_pass_dvoa = rb_pass_dvoa
-
-    def set_line_fields(self, oline_adj_line_yds, opp_adj_line_yds):
-        self.oline_adj_line_yds = oline_adj_line_yds
-        self.opp_adj_line_yds = opp_adj_line_yds
-
-    def set_season_fields(self, season_snap_percent, season_rush_atts, season_targets):
-        self.season_snap_percent = season_snap_percent
-        self.season_rush_atts = season_rush_atts
-        self.season_targets = season_targets
+        self.last_week_rz_rush_atts = 0
+        self.last_week_rz_targets = 0
+        self.last_week_rz_opps = 0
 
     def set_last_week_fields(self):
         self.last_week_snap_percent = self.get_last_week_snaps()
         self.last_week_rush_atts = self.get_last_week_rush_atts()
         self.last_week_targets = self.get_last_week_targets()
+
+    def set_last_week_rz_fields(self):
+        self.last_week_rz_rush_atts = self.get_last_week_rz_rush_atts()
+        self.last_week_rz_targets = self.get_last_week_rz_targets()
 
     def get_last_week_snaps(self):
         # if list is empty, return None
@@ -216,6 +197,10 @@ class RB(Player):
         return self.snap_percentage_by_week[-1]
 
     def get_last_week_rush_atts(self):
+        # if dict is empty, return None
+        if not self.rush_atts_weeks:
+            return None
+
         # print("from class: {}".format(self.rush_atts_weeks))
         return list(self.rush_atts_weeks.values())[-1]
 
@@ -226,12 +211,27 @@ class RB(Player):
 
         return self.targets_weeks[-1]
 
+    def get_last_week_rz_rush_atts(self):
+        # if dict is empty, return None
+        if not self.rz_rush_atts_weeks:
+            return None
+
+        # print("from class: {}".format(self.rush_atts_weeks))
+        return list(self.rz_rush_atts_weeks.values())[-1]
+
+    def get_last_week_rz_targets(self):
+        # if list is empty, return None
+        if not self.rz_targets_weeks:
+            return None
+
+        return self.rz_targets_weeks[-1]
+
     def get_writable_header(self):
         return ['Position', 'Name', 'Opp', 'Abbv',   # standard
-                'Implied Total', 'O/U', 'Line',  # vegas
+                'Total', 'O/U', 'Line',  # vegas
                 'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line',  # matchup
-                'Snap%', 'Rush ATTs', 'Targets', 'RZ Opps',  # season
-                'Snap%', 'Rush ATTs', 'Targets',  # last week
+                'Snap%', 'Rush ATTs', 'Trgts', 'RZ Opps',  # season
+                'Snap%', 'Rush ATTs', 'Trgts', 'RZ Opps',  # last week
                 'Ave PPG', 'ECR', '+/- Rank',  # rankings
                 'Salary', 'Salary%',  # draftkings
                 'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
@@ -242,7 +242,7 @@ class RB(Player):
                 self.projected, self.overunder, self.line,  # vegas
                 self.run_dvoa, self.rb_pass_dvoa, self.oline_adj_line_yds, self.opp_adj_line_yds,  # matchup
                 self.season_snap_percent, self.season_rush_atts, self.season_targets,  self.season_rz_opps,  # season
-                self.last_week_snap_percent, self.last_week_rush_atts, self.last_week_targets,  # last week
+                self.last_week_snap_percent, self.last_week_rush_atts, self.last_week_targets, self.last_week_rz_opps,  # last week
                 self.average_ppg, 'rank', '+/- r',   # rankings
                 self.salary, self.salary_percent,  # draftkings
                 self.fdraft_salary, self.fdraft_salary_perc, '+/- fd',  # fdraft
@@ -297,6 +297,10 @@ class WR(Player):
         self.last_week_recepts = self.get_last_week_recepts()
         self.last_week_targets = self.get_last_week_targets()
 
+    def set_last_week_rz_fields(self):
+        self.last_week_rz_rush_atts = self.get_last_week_rz_rush_atts()
+        self.last_week_rz_targets = self.get_last_week_rz_targets()
+
     def get_last_week_snaps(self):
         # if list is empty, return None
         if not self.snap_percentage_by_week:
@@ -318,12 +322,27 @@ class WR(Player):
 
         return self.targets_weeks[-1]
 
+    def get_last_week_rz_rush_atts(self):
+        # if dict is empty, return None
+        if not self.rz_rush_atts_weeks:
+            return None
+
+        # print("from class: {}".format(self.rush_atts_weeks))
+        return list(self.rz_rush_atts_weeks.values())[-1]
+
+    def get_last_week_rz_targets(self):
+        # if list is empty, return None
+        if not self.rz_targets_weeks:
+            return None
+
+        return self.rz_targets_weeks[-1]
+
     def get_writable_header(self):
         return ['Position', 'Name', 'Opp', 'Abbv',   # standard
-                'Implied Total', 'O/U', 'Line',  # vegas
+                'Total', 'O/U', 'Line',  # vegas
                 'Pass DVOA', 'vs. WR1', 'vs. WR2',  # matchup
-                'Snap%', 'Targets', 'Recepts', 'RZ Opps',  # season
-                'Snap%', 'Targets', 'Recepts',  # last week
+                'Snap%', 'Trgts', 'Rcpts', 'RZ Opps',  # season
+                'Snap%', 'Trgts', 'Rcpts', 'RZ Opps',  # last week
                 'Ave PPG', 'ECR', '+/- Rank',  # rankings
                 'Salary', 'Salary%',  # draftkings
                 'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
@@ -334,7 +353,7 @@ class WR(Player):
                 self.projected, self.overunder, self.line,  # vegas
                 self.pass_def_rank, self.wr1_rank, self.wr2_rank,  # matchup
                 self.season_snap_percent, self.season_targets, self.season_recepts, self.season_rz_opps,  # season
-                self.last_week_snap_percent, self.last_week_targets, self.last_week_recepts,  # last week
+                self.last_week_snap_percent, self.last_week_targets, self.last_week_recepts, self.last_week_rz_opps,  # last week
                 self.average_ppg, 'rank', '+/- r',   # rankings
                 self.salary, self.salary_percent,  # draftkings
                 self.fdraft_salary, self.fdraft_salary_perc, '+/- fd',  # fdraft
@@ -389,6 +408,10 @@ class TE(Player):
         self.last_week_targets = self.get_last_week_targets()
         # print("set last_week_snap_percent to {}".format(self.last_week_targets))
 
+    def set_last_week_rz_fields(self):
+        self.last_week_rz_rush_atts = self.get_last_week_rz_rush_atts()
+        self.last_week_rz_targets = self.get_last_week_rz_targets()
+
     def get_last_week_snaps(self):
         # if list is empty, return None
         if not self.snap_percentage_by_week:
@@ -410,12 +433,27 @@ class TE(Player):
 
         return self.targets_weeks[-1]
 
+    def get_last_week_rz_rush_atts(self):
+        # if dict is empty, return None
+        if not self.rz_rush_atts_weeks:
+            return None
+
+        # print("from class: {}".format(self.rush_atts_weeks))
+        return list(self.rz_rush_atts_weeks.values())[-1]
+
+    def get_last_week_rz_targets(self):
+        # if list is empty, return None
+        if not self.rz_targets_weeks:
+            return None
+
+        return self.rz_targets_weeks[-1]
+
     def get_writable_header(self):
         return ['Position', 'Name', 'Opp', 'Abbv',   # standard
-                'Implied Total', 'O/U', 'Line',  # vegas
+                'Total', 'O/U', 'Line',  # vegas
                 'Pass DVOA', 'vs. TE',  # matchup
-                'Snap%', 'Targets', 'Recepts', 'RZ Opps',  # season
-                'Snap%', 'Targets', 'Recepts',  # last week
+                'Snap%', 'Trgts', 'Rcpts', 'RZ Opps',  # season
+                'Snap%', 'Trgts', 'Rcpts', 'RZ Opps',  # last week
                 'Ave PPG', 'ECR', '+/- Rank',   # rankings
                 'Salary', 'Salary%',  # draftkings
                 'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
@@ -426,7 +464,7 @@ class TE(Player):
                 self.projected, self.overunder, self.line,  # vegas
                 self.pass_def_rank, self.te_rank,  # matchup
                 self.season_snap_percent, self.season_targets, self.season_recepts, self.season_rz_opps,  # season
-                self.last_week_snap_percent, self.last_week_targets, self.last_week_recepts,  # last week
+                self.last_week_snap_percent, self.last_week_targets, self.last_week_recepts, self.last_week_rz_opps,  # last week
                 self.average_ppg, 'rank', '+/- r',  # rankings
                 self.salary, self.salary_percent,  # draftkings
                 self.fdraft_salary, self.fdraft_salary_perc, '+/- fd',  # fdraft
@@ -447,7 +485,7 @@ class DST(Player):
 
     def get_writable_header(self):
         return ['Position', 'Name', 'Opp', 'Abbv',  # standard
-                'Implied Total', 'O/U', 'Line',  # vegas
+                'Total', 'O/U', 'Line',  # vegas
                 'Ave PPG', 'ECR', '+/- Rank',  # rankings
                 'Salary', 'Salary%',  # draftkings
                 'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
