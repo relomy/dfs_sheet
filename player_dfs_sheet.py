@@ -181,14 +181,15 @@ def massage_name(name):
 
 
 def get_lineups_player_stats():
-    dictionary = {}
-    dictionary['snaps'] = get_lineups_nfl_snaps()
-    dictionary['targets'] = get_lineups_nfl_targets()
-    dictionary['receptions'] = get_lineups_nfl_receptions()
-    dictionary['rush_atts'] = get_lineups_nfl_rush_atts()
-    dictionary['redzone_rushes'] = get_lineups_nfl_redzone_rush_atts()
-    dictionary['redzone_targets'] = get_lineups_nfl_redzone_targets()
-    return dictionary
+    stats = {
+        'snaps': get_lineups_nfl_snaps(),
+        'targets': get_lineups_nfl_targets(),
+        'receptions': get_lineups_nfl_receptions(),
+        'rush_atts': get_lineups_nfl_rush_atts(),
+        'redzone_rushes': get_lineups_nfl_redzone_rush_atts(),
+        'redzone_targets': get_lineups_nfl_redzone_targets(),
+    }
+    return stats
 
 
 def get_lineups_nfl_snaps():
