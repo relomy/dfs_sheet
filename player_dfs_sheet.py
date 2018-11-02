@@ -52,6 +52,7 @@ def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment
 
 
 def create_sheet_header(wb, title, header):
+    """Create a sheet within a workbook given a title and header."""
     wb.create_sheet(title=title)
     wb[title].append(header)
 
@@ -83,7 +84,47 @@ def pull_soup_data(filename, ENDPOINT):
     return soup
 
 
-def fpros_ecr(wb, position):
+def pull_data(filename, ENDPOINT):
+    """Either pull file from API or from file."""
+    data = None
+    if not path.isfile(filename):
+        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
+        # send GET request
+        r = requests.get(ENDPOINT)
+        status = r.status_code
+
+        # if not successful, raise an exception
+        if status != 200:
+            raise Exception('Requests status != 200. It is: {0}'.format(status))
+
+        # store response
+        data = r.json()
+
+        # dump json to file for future use to avoid multiple API pulls
+        with open(filename, 'w') as outfile:
+            json.dump(data, outfile)
+    else:
+        print("File exists [{}]. Nice!".format(filename))
+        # load json from file
+        with open(filename, 'r') as json_file:
+            data = json.load(json_file)
+
+    return data
+
+
+def massage_name(name):
+    """Remove periods, third names, and special fixes for player names."""
+    # remove periods from name
+    name = name.replace('.', '')
+    # remove Jr. and III etc
+    name = ' '.join(name.split(' ')[:2])
+    # special fix for Juju Smith-Schuster
+    name = name.replace('Juju', 'JuJu')
+    return name
+
+
+def get_fpros_ecr(position):
+    """Get stats from FantasyPros for each position."""
     if position == 'QB' or position == 'DST':
         ENDPOINT = 'https://www.fantasypros.com/nfl/rankings/{}.php'.format(
             position.lower())
@@ -141,46 +182,8 @@ def fpros_ecr(wb, position):
         return ls
 
 
-def pull_data(filename, ENDPOINT):
-    """Either pull file from API or from file."""
-    data = None
-    if not path.isfile(filename):
-        print("{} does not exist. Pulling from endpoint [{}]".format(filename, ENDPOINT))
-        # send GET request
-        r = requests.get(ENDPOINT)
-        status = r.status_code
-
-        # if not successful, raise an exception
-        if status != 200:
-            raise Exception('Requests status != 200. It is: {0}'.format(status))
-
-        # store response
-        data = r.json()
-
-        # dump json to file for future use to avoid multiple API pulls
-        with open(filename, 'w') as outfile:
-            json.dump(data, outfile)
-    else:
-        print("File exists [{}]. Nice!".format(filename))
-        # load json from file
-        with open(filename, 'r') as json_file:
-            data = json.load(json_file)
-
-    return data
-
-
-def massage_name(name):
-    # remove periods from name
-    name = name.replace('.', '')
-    # remove Jr. and III etc
-    name = ' '.join(name.split(' ')[:2])
-    # special fix for Juju Smith-Schuster
-    name = name.replace('Juju', 'JuJu')
-
-    return name
-
-
 def get_lineups_player_stats():
+    """Meta function to pull all player stats from lineups.com."""
     stats = {
         'snaps': get_lineups_nfl_snaps(),
         'targets': get_lineups_nfl_targets(),
@@ -193,6 +196,7 @@ def get_lineups_player_stats():
 
 
 def get_lineups_nfl_snaps():
+    """Get players' snaps from lineups.com."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/snaps/2018/OFF'
     fn = 'nfl_snaps.json'
     dir = 'sources'
@@ -214,6 +218,7 @@ def get_lineups_nfl_snaps():
 
 
 def get_lineups_nfl_targets():
+    """Get players' targets from lineups.com."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/targets/2018/OFF'
     fn = 'nfl_targets.json'
     dir = 'sources'
@@ -230,6 +235,7 @@ def get_lineups_nfl_targets():
 
 
 def get_lineups_nfl_receptions():
+    """Get players' receptions from lineups.com."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/receptions/2018/OFF'
     fn = 'nfl_receptions.json'
     dir = 'sources'
@@ -246,6 +252,7 @@ def get_lineups_nfl_receptions():
 
 
 def get_lineups_nfl_rush_atts():
+    """Get players' rush attempts from lineups.com."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/rush/2018/OFF'
     fn = 'nfl_rush_atts.json'
     dir = 'sources'
@@ -262,6 +269,7 @@ def get_lineups_nfl_rush_atts():
 
 
 def get_lineups_nfl_redzone_rush_atts():
+    """Get players' red zone rush attempts from lineups.com."""
     ENDPOINT = 'https://api.lineups.com/nfl/fetch/redzone-rush/2018/OFF'
     fn = 'nfl_redzone_rushes.json'
     dir = 'sources'
@@ -278,7 +286,8 @@ def get_lineups_nfl_redzone_rush_atts():
 
 
 def get_lineups_nfl_redzone_targets():
-    dictionary = {}
+    """Get players' snaps information from lineups.com."""
+    red_zone_targets = {}
     for position in ['RB', 'WR', 'TE']:
         ENDPOINT = "https://api.lineups.com/nfl/fetch/redzone-targets/2018/{}".format(
             position)
@@ -292,13 +301,13 @@ def get_lineups_nfl_redzone_targets():
         if data is None:
             raise Exception('Failed to pull data from API or file.')
 
-        dictionary.update({massage_name(x['full_name']): x for x in data['data']})
+        red_zone_targets.update({massage_name(x['full_name']): x for x in data['data']})
     # create dictionary and set key to player's full name
-    return dictionary
+    return red_zone_targets
 
 
 def get_nfl_def_stats(wb):
-    """Retrieve receptions from lineups.com API."""
+    """Get teams' defensive stats from lineups.com."""
     # https://www.lineups.com/nfl/teams/stats/defense-stats
     # get passing yds/att
     # td / att (td %)
@@ -400,21 +409,15 @@ def conv_weeks_to_padded_list(weeks):
     # a = (a + N * [''])[:N]
     N = 16
     all_weeks = (all_weeks + N * [''])[:N]
-
     return all_weeks
 
 
 def get_vegas_rg(wb):
+    """Pull Vegas totals/lines/spreads from RotoGrinders."""
     ENDPOINT = 'https://rotogrinders.com/schedules/nfl'
-
     fn = 'vegas_script.html'
     dir = 'sources'
     filename = path.join(dir, fn)
-
-    # create worksheet
-    title = 'VEGAS'
-    header = ['Time', 'Team', 'Opponent', 'Line', 'MoneyLine',
-              'Over/Under', 'Projected Points', 'Projected Points Change']
 
     # pull data
     soup = pull_soup_data(filename, ENDPOINT)
@@ -438,10 +441,10 @@ def get_vegas_rg(wb):
     json_str = pattern.search(js_vegas_data).group(1)
     vegas_json = json.loads(json_str)
 
-    dictionary = {}
+    vegas = {}
     # iterate through json
     for matchup in vegas_json:
-        dictionary[matchup['team']] = {
+        vegas[matchup['team']] = {
             'display_time': matchup['time']['display'],
             'opponent': matchup['opponent'],
             'line': matchup['line'],
@@ -450,10 +453,14 @@ def get_vegas_rg(wb):
             'projected': matchup['projected'],
             'projectedchange': matchup['projectedchange']['value']
         }
-    return dictionary
+    return vegas
 
 
 def get_dvoa_rankings(wb):
+    """Get DVOA rankings for team defenses from FootballOutsiders.
+
+    There are two additional get_dvoa_team functions for the resulting tables.
+    """
     ENDPOINT = 'https://www.footballoutsiders.com/stats/teamdef'
     fn = 'html_defense.html'
     dir = 'sources'
@@ -487,12 +494,11 @@ def get_dvoa_team_rankings(wb, soup_table):
 
     # find the rest of the table header_rows
     rows = defense_stats.find_all('tr')
-    # na = non-adjusted
 
-    return_dict = {}
+    dvoa_team_rankings = {}
 
     # make blank NFL key
-    return_dict['NFL'] = {}
+    dvoa_team_rankings['NFL'] = {}
     for row in rows:
         cols = row.find_all('td')
         cols = [ele.text.strip() for ele in cols]
@@ -501,6 +507,7 @@ def get_dvoa_team_rankings(wb, soup_table):
             # pop 'team_abbv' for dict key
             key = cols.pop(1)
 
+            # na = non-adjusted
             key_names = ['row_num', 'defense_dvoa', 'last_week',
                          'defense_dave', 'total_def_rank', 'pass_def', 'pass_def_rank', 'rush_def',
                          'rush_def_rank', 'na_total', 'na_pass', 'na_rush', 'var', 'sched', 'rank']
@@ -508,8 +515,8 @@ def get_dvoa_team_rankings(wb, soup_table):
 
             # map key_names to cols
 
-            return_dict[key] = dict(zip(key_names, cols))
-    return return_dict
+            dvoa_team_rankings[key] = dict(zip(key_names, cols))
+    return dvoa_team_rankings
 
 
 def get_dvoa_recv_rankings(wb, soup_table, dict_team_rankings):
@@ -1208,7 +1215,7 @@ def main():
     ecr_pos_dict = {}
     # for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
-        ecr_pos_dict[position] = fpros_ecr(wb, position)
+        ecr_pos_dict[position] = get_fpros_ecr(position)
 
     fdraft_csv = 'FDraft_week9_full.csv'
     if path.exists(fdraft_csv):
@@ -1380,8 +1387,8 @@ def main():
                     if name in stats_dict['snaps']:
                         # set season numbers
                         wr.season_snap_percent = stats_dict['snaps'][name]['season_snap_percent']
-                        wr.season_rush_atts = stats_dict['rush_atts'][name]['average']
                         wr.season_targets = stats_dict['targets'][name]['average']
+                        wr.season_recepts = stats_dict['receptions'][name]['average']
 
                         # store lists in Player object
                         wr.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
@@ -1432,8 +1439,8 @@ def main():
                     if name in stats_dict['snaps']:
                         # set season numbers
                         te.season_snap_percent = stats_dict['snaps'][name]['season_snap_percent']
-                        te.season_rush_atts = stats_dict['rush_atts'][name]['average']
                         te.season_targets = stats_dict['targets'][name]['average']
+                        te.season_recepts = stats_dict['receptions'][name]['average']
 
                         te.snap_percentage_by_week = stats_dict['snaps'][name]['snap_percentage_by_week']
                         te.recepts_weeks = stats_dict['receptions'][name]['weeks']
