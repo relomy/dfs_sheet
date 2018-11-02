@@ -482,15 +482,16 @@ def get_dvoa_rankings(wb):
 
 
 def get_dvoa_team_rankings(wb, soup_table):
+    """Get rankings from first table in HTML."""
     defense_stats = soup_table
 
     # find header
-    table_header = defense_stats.find('thead')
+    # table_header = defense_stats.find('thead')
     # there is one header row
-    header_row = table_header.find('tr')
+    # header_row = table_header.find('tr')
     # loop through header columns and append to worksheet
-    header_cols = header_row.find_all('th')
-    header = [ele.text.strip() for ele in header_cols]
+    # header_cols = header_row.find_all('th')
+    # header = [ele.text.strip() for ele in header_cols]
 
     # find the rest of the table header_rows
     rows = defense_stats.find_all('tr')
@@ -512,18 +513,17 @@ def get_dvoa_team_rankings(wb, soup_table):
                          'defense_dave', 'total_def_rank', 'pass_def', 'pass_def_rank', 'rush_def',
                          'rush_def_rank', 'na_total', 'na_pass', 'na_rush', 'var', 'sched', 'rank']
             # print(key)
-
             # map key_names to cols
-
             dvoa_team_rankings[key] = dict(zip(key_names, cols))
     return dvoa_team_rankings
 
 
 def get_dvoa_recv_rankings(wb, soup_table, dict_team_rankings):
+    """Get rankings from second table in HTML (vs. WR1, WR2, etc.)."""
     # VS types of receivers
     def_recv_stats = soup_table
-    table_header = def_recv_stats.find('thead')
-    header_rows = table_header.find_all('tr')
+    # table_header = def_recv_stats.find('thead')
+    # header_rows = table_header.find_all('tr')
 
     rows = def_recv_stats.find_all('tr')
     for row in rows:
@@ -548,6 +548,7 @@ def get_dvoa_recv_rankings(wb, soup_table, dict_team_rankings):
 
 
 def get_line_rankings(wb):
+    """Get offensive and defensive line rankings from FootballOutsiders."""
     dir = 'sources'
     # create empty dict to return
     dictionary = {}
@@ -573,12 +574,12 @@ def get_line_rankings(wb):
             # store table
             line_stats = table[0]
             # find header
-            table_header = line_stats.find('thead')
+            # table_header = line_stats.find('thead')
             # there is one header row
-            header_row = table_header.find('tr')
+            # header_row = table_header.find('tr')
             # loop through header columns and append to worksheet
-            header_cols = header_row.find_all('th')
-            header = [ele.text.strip() for ele in header_cols]
+            # header_cols = header_row.find_all('th')
+            # header = [ele.text.strip() for ele in header_cols]
 
             # find the rest of the table header_rows
             rows = line_stats.find_all('tr')
@@ -614,6 +615,7 @@ def get_line_rankings(wb):
 
 
 def get_matchup_info(game_info, team_abbv):
+    """Parse game info into a nice string (home vs. away)."""
     # split game info into matchup_info
     home_team, away_team = game_info.split(' ', 1)[0].split('@')
     if team_abbv == home_team:
@@ -624,6 +626,7 @@ def get_matchup_info(game_info, team_abbv):
 
 
 def qb_map(key):
+    """Return proper name for dumb abbreviated name from FootballOutsiders."""
     fo_qb_names = {
         'D.Brees': 'Drew Brees',
         'P.Mahomes': 'Patrick Mahomes',
@@ -674,6 +677,10 @@ def qb_map(key):
 
 
 def get_qb_stats_FO(wb):
+    """Get QB stats from FootballOutsidersself.
+
+    There are three separate tables that need to be parsed.
+    """
     ENDPOINT = 'https://www.footballoutsiders.com/stats/qb'
     fn = 'html_qb.html'
     dir = 'sources'

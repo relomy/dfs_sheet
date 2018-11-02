@@ -276,11 +276,17 @@ class WR(Player):
         self.snap_percentage_by_week = None  # list
         self.recepts_weeks = None  # dict
         self.targets_weeks = None  # list
+        self.rz_targets_weeks = None  # list
+        self.rz_rush_atts_weeks = None  # dict
 
         # actual last week variables
         self.last_week_snap_percent = None
         self.last_week_recepts = None
         self.last_week_targets = None
+
+        self.last_week_rz_rush_atts = 0
+        self.last_week_rz_targets = 0
+        self.last_week_rz_opps = 0
 
     def set_last_week_fields(self):
         self.last_week_snap_percent = self.get_last_week_snaps()
@@ -375,11 +381,16 @@ class TE(Player):
         self.snap_percentage_by_week = None  # list
         self.recepts_weeks = None  # dict
         self.targets_weeks = None  # list
+        self.rz_targets_weeks = None  # list
+        self.rz_rush_atts_weeks = None  # dict
 
         # actual last week variables
         self.last_week_snap_percent = None
         self.last_week_recepts = None
         self.last_week_targets = None
+
+        self.last_week_rz_rush_atts = 0
+        self.last_week_rz_targets = 0
 
     def set_last_week_fields(self):
         self.last_week_snap_percent = self.get_last_week_snaps()
