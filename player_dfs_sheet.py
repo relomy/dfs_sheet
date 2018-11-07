@@ -532,9 +532,9 @@ def get_dvoa_recv_rankings(wb, soup_table, dict_team_rankings):
 
         if cols:
             # pop 'team_abbv' for dict key
-            key = cols.pop(0)
+            key = cols.pop(1)
 
-            key_names = ['wr1_dvoa', 'wr1_rank', 'wr1_pa_g', 'wr1_yd_g',
+            key_names = ['rank', 'wr1_dvoa', 'wr1_rank', 'wr1_pa_g', 'wr1_yd_g',
                          'wr2_dvoa', 'wr2_rank', 'wr2_pa_g', 'wr2_yd_g',
                          'wro_dvoa', 'wro_rank', 'wro_pa_g', 'wro_yd_g',
                          'te_dvoa', 'te_rank', 'te_pa_g', 'te_yd_g',
@@ -617,7 +617,8 @@ def get_line_rankings(wb):
 def get_matchup_info(game_info, team_abbv):
     """Parse game info into a nice string (home vs. away)."""
     # split game info into matchup_info
-    home_team, away_team = game_info.split(' ', 1)[0].split('@')
+
+    away_team, home_team = game_info.split(' ', 1)[0].split('@')
     if team_abbv == home_team:
         matchup_info = "vs. {}".format(away_team)
     else:
@@ -1199,7 +1200,8 @@ def excel_apply_sheet_order(wb):
 
 
 def main():
-    fn = 'DKSalaries_week9_full.csv'
+    fn = 'DKSalaries_week10_full.csv'
+    fdraft_csv = 'FDraft_week10_full.csv'
     dest_filename = 'player_sheet.xlsx'
 
     # create workbook/worksheet
@@ -1224,7 +1226,7 @@ def main():
     for position in ['QB', 'RB', 'WR', 'TE', 'DST']:
         ecr_pos_dict[position] = get_fpros_ecr(position)
 
-    fdraft_csv = 'FDraft_week9_full.csv'
+    # check if Fantasy Draft salary sheet exists
     if path.exists(fdraft_csv):
         fdraft_dict = read_fantasy_draft_csv(fdraft_csv)
     else:
