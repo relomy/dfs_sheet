@@ -1121,7 +1121,7 @@ def excel_apply_conditional_formatting(wb):
         # bigger/positive = green, smaller/negative = red
         green_to_red_headers = [
             'Total', 'O/U', 'Run DVOA', 'Pass DVOA', 'DVOA', 'vs. WR1', 'vs. WR2',
-            'O-Line', 'Snap%', 'Rush ATTs', 'Trgts', 'Rcpts', 'vs. TE',
+            'O-Line', 'D-Line', 'Snap%', 'Rush ATTs', 'Trgts', 'Rcpts', 'vs. TE',
             'Ave PPG', 'Rush Yards', 'DYAR', 'QBR', 'Def Yds/Att', 'Def Comp%', 'Def TD%',
             'RZ Opps'
         ]
@@ -1130,7 +1130,7 @@ def excel_apply_conditional_formatting(wb):
                                            end_type='max', end_color=green)
         # bigger/positive = red, smaller/negative = green
         red_to_green_headers = [
-            'Line', 'D-Line', 'O-Line Sack%', 'D-Line Sack%', 'ECR'
+            'Line', 'O-Line Sack%', 'D-Line Sack%', 'ECR'
         ]
         red_to_green_rule = ColorScaleRule(start_type='min', start_color=green,
                                            mid_type='percentile', mid_value=50, mid_color=yellow,
