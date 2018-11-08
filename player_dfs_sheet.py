@@ -632,7 +632,7 @@ def qb_map(key):
         'D.Brees': 'Drew Brees',
         'P.Mahomes': 'Patrick Mahomes',
         'J.Goff': 'Jared Goff',
-        'P.Rivers': 'Phillip Rivers',
+        'P.Rivers': 'Philip Rivers',
         'M.Ryan': 'Matt Ryan',
         'R.Fitzpatrick': 'Ryan Fitzpatrick',
         'A.Dalton': 'Andy Dalton',
