@@ -425,7 +425,12 @@ def get_vegas_rg(wb):
     # find script(s) in the html
     script = soup.findAll('script')
 
-    js_vegas_data = script[11].string
+    # for i, s in enumerate(script):
+    #     print(i)
+    #     print(s.string)
+
+    js_vegas_data = script[12].string
+    # print(js_vegas_data)
 
     # replace two-letter abbvs
     js_vegas_data = js_vegas_data.replace('GBP', 'GB')
