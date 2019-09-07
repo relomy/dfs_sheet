@@ -1437,9 +1437,9 @@ def excel_apply_sheet_order(wb):
 
 
 def main():
-    fn = "DKSalaries_week10_full.csv"
-    fdraft_csv = "FDraft_week10_full.csv"
-    dest_filename = "player_sheet.xlsx"
+    fn = 'DKSalaries_week11_full.csv'
+    fdraft_csv = 'FDraft_week11_full.csv'
+    dest_filename = 'player_sheet.xlsx'
 
     # create workbook/worksheet
     wb = Workbook()
