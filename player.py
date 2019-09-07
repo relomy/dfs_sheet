@@ -4,7 +4,17 @@
 class Player:
     """Creates Player object."""
 
-    def __init__(self, player_name, position, team_abbv, salary, game_info, average_ppg, matchup, rank):
+    def __init__(
+        self,
+        player_name,
+        position,
+        team_abbv,
+        salary,
+        game_info,
+        average_ppg,
+        matchup,
+        rank,
+    ):
         self.name = player_name
 
         # from DK salary CSV
@@ -24,7 +34,8 @@ class Player:
         self.rank = rank
 
         self.opponent, self.opp_excel, self.home_team = self.get_opponent_matchup(
-            game_info, team_abbv)
+            game_info, team_abbv
+        )
 
         # calculate salary percent
         self.salary_percent = "{0:.1%}".format(float(salary) / 50000)
@@ -86,7 +97,7 @@ class Player:
         self.projected = projected
 
     def get_opponent_matchup(self, game_info, team_abbv):
-        home_team, away_team = game_info.split(' ', 1)[0].split('@')
+        home_team, away_team = game_info.split(" ", 1)[0].split("@")
         if team_abbv == home_team:
             opp = away_team
             opp_excel = "vs. {}".format(away_team)
@@ -120,29 +131,71 @@ class QB(Player):
         self.opp_td_perc = None
 
     def get_writable_header(self):
-        return ['Position', 'Name', 'Opp', 'Abbv',   # standard
-                'Total', 'O/U', 'Line',  # vegas
-                'Rush Yards', 'DYAR', 'QBR',  # season
-                'O-Line Sack%', 'D-Line Sack%',  # pressure
-                'Pass DVOA', 'Def Yds/Att', 'Def Comp%', 'Def TD%',  # matchup
-                'Ave PPG', 'ECR', '+/- Rank',  # rankings
-                'Salary', 'Salary%',  # draftkings
-                'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
-                'ECR Data', 'Salary Rank', 'FDraft Salary Rank']  # hidden
+        return [
+            "Position",
+            "Name",
+            "Opp",
+            "Abbv",  # standard
+            "Total",
+            "O/U",
+            "Line",  # vegas
+            "Rush Yards",
+            "DYAR",
+            "QBR",  # season
+            "O-Line Sack%",
+            "D-Line Sack%",  # pressure
+            "Pass DVOA",
+            "Def Yds/Att",
+            "Def Comp%",
+            "Def TD%",  # matchup
+            "Ave PPG",
+            "ECR",
+            "+/- Rank",  # rankings
+            "Salary",
+            "Salary%",  # draftkings
+            "FD Salary",
+            "FD Salary%",
+            "FD +/- Rank",  # fdraft
+            "ECR Data",
+            "Salary Rank",
+            "FDraft Salary Rank",
+        ]  # hidden
 
     def get_writable_row(self):
-        return [self.position, self.name, self.matchup, self.team_abbv,   # standard
-                self.projected, self.overunder, self.line,  # vegas
-                self.rush_yds, self.pass_dyar, self.qbr,  # season stats
-                self.line_sack_rate, self.opp_sack_rate,  # pressure
-                self.pass_def_rank, self.opp_yds_att, self.opp_comp_perc, self.opp_td_perc,  # matchup
-                self.average_ppg, 'rank', '+/- r',  # rankings
-                self.salary, self.salary_percent,  # draftkings
-                self.fdraft_salary, self.fdraft_salary_perc, '+/- fd',  # fdraft
-                self.rank, 'salaryrnk', 'fdraft rank']  # hidden
+        return [
+            self.position,
+            self.name,
+            self.matchup,
+            self.team_abbv,  # standard
+            self.projected,
+            self.overunder,
+            self.line,  # vegas
+            self.rush_yds,
+            self.pass_dyar,
+            self.qbr,  # season stats
+            self.line_sack_rate,
+            self.opp_sack_rate,  # pressure
+            self.pass_def_rank,
+            self.opp_yds_att,
+            self.opp_comp_perc,
+            self.opp_td_perc,  # matchup
+            self.average_ppg,
+            "rank",
+            "+/- r",  # rankings
+            self.salary,
+            self.salary_percent,  # draftkings
+            self.fdraft_salary,
+            self.fdraft_salary_perc,
+            "+/- fd",  # fdraft
+            self.rank,
+            "salaryrnk",
+            "fdraft rank",
+        ]  # hidden
 
     def __repr__(self):
-        return("QB({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
+        return "QB({}, {} ({}), {})".format(
+            self.name, self.salary, self.salary_percent, self.opp_excel
+        )
 
 
 class RB(Player):
@@ -227,29 +280,77 @@ class RB(Player):
         return self.rz_targets_weeks[-1]
 
     def get_writable_header(self):
-        return ['Position', 'Name', 'Opp', 'Abbv',   # standard
-                'Total', 'O/U', 'Line',  # vegas
-                'Run DVOA', 'Pass DVOA', 'O-Line', 'D-Line',  # matchup
-                'Snap%', 'Rush ATTs', 'Trgts', 'RZ Opps',  # season
-                'Snap%', 'Rush ATTs', 'Trgts', 'RZ Opps',  # last week
-                'Ave PPG', 'ECR', '+/- Rank',  # rankings
-                'Salary', 'Salary%',  # draftkings
-                'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
-                'ECR Data', 'Salary Rank', 'FDraft Salary Rank']  # hidden
+        return [
+            "Position",
+            "Name",
+            "Opp",
+            "Abbv",  # standard
+            "Total",
+            "O/U",
+            "Line",  # vegas
+            "Run DVOA",
+            "Pass DVOA",
+            "O-Line",
+            "D-Line",  # matchup
+            "Snap%",
+            "Rush ATTs",
+            "Trgts",
+            "RZ Opps",  # season
+            "Snap%",
+            "Rush ATTs",
+            "Trgts",
+            "RZ Opps",  # last week
+            "Ave PPG",
+            "ECR",
+            "+/- Rank",  # rankings
+            "Salary",
+            "Salary%",  # draftkings
+            "FD Salary",
+            "FD Salary%",
+            "FD +/- Rank",  # fdraft
+            "ECR Data",
+            "Salary Rank",
+            "FDraft Salary Rank",
+        ]  # hidden
 
     def get_writable_row(self):
-        return [self.position, self.name, self.matchup, self.team_abbv,
-                self.projected, self.overunder, self.line,  # vegas
-                self.run_dvoa, self.rb_pass_dvoa, self.oline_adj_line_yds, self.opp_adj_line_yds,  # matchup
-                self.season_snap_percent, self.season_rush_atts, self.season_targets,  self.season_rz_opps,  # season
-                self.last_week_snap_percent, self.last_week_rush_atts, self.last_week_targets, self.last_week_rz_opps,  # last week
-                self.average_ppg, 'rank', '+/- r',   # rankings
-                self.salary, self.salary_percent,  # draftkings
-                self.fdraft_salary, self.fdraft_salary_perc, '+/- fd',  # fdraft
-                self.rank, 'salaryrnk', 'fdraft rank']  # hidden
+        return [
+            self.position,
+            self.name,
+            self.matchup,
+            self.team_abbv,
+            self.projected,
+            self.overunder,
+            self.line,  # vegas
+            self.run_dvoa,
+            self.rb_pass_dvoa,
+            self.oline_adj_line_yds,
+            self.opp_adj_line_yds,  # matchup
+            self.season_snap_percent,
+            self.season_rush_atts,
+            self.season_targets,
+            self.season_rz_opps,  # season
+            self.last_week_snap_percent,
+            self.last_week_rush_atts,
+            self.last_week_targets,
+            self.last_week_rz_opps,  # last week
+            self.average_ppg,
+            "rank",
+            "+/- r",  # rankings
+            self.salary,
+            self.salary_percent,  # draftkings
+            self.fdraft_salary,
+            self.fdraft_salary_perc,
+            "+/- fd",  # fdraft
+            self.rank,
+            "salaryrnk",
+            "fdraft rank",
+        ]  # hidden
 
     def __repr__(self):
-        return("RB({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
+        return "RB({}, {} ({}), {})".format(
+            self.name, self.salary, self.salary_percent, self.opp_excel
+        )
 
 
 class WR(Player):
@@ -334,29 +435,75 @@ class WR(Player):
         return self.rz_targets_weeks[-1]
 
     def get_writable_header(self):
-        return ['Position', 'Name', 'Opp', 'Abbv',   # standard
-                'Total', 'O/U', 'Line',  # vegas
-                'Pass DVOA', 'vs. WR1', 'vs. WR2',  # matchup
-                'Snap%', 'Trgts', 'Rcpts', 'RZ Opps',  # season
-                'Snap%', 'Trgts', 'Rcpts', 'RZ Opps',  # last week
-                'Ave PPG', 'ECR', '+/- Rank',  # rankings
-                'Salary', 'Salary%',  # draftkings
-                'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
-                'ECR Data', 'Salary Rank', 'FDraft Salary Rank']  # hidden
+        return [
+            "Position",
+            "Name",
+            "Opp",
+            "Abbv",  # standard
+            "Total",
+            "O/U",
+            "Line",  # vegas
+            "Pass DVOA",
+            "vs. WR1",
+            "vs. WR2",  # matchup
+            "Snap%",
+            "Trgts",
+            "Rcpts",
+            "RZ Opps",  # season
+            "Snap%",
+            "Trgts",
+            "Rcpts",
+            "RZ Opps",  # last week
+            "Ave PPG",
+            "ECR",
+            "+/- Rank",  # rankings
+            "Salary",
+            "Salary%",  # draftkings
+            "FD Salary",
+            "FD Salary%",
+            "FD +/- Rank",  # fdraft
+            "ECR Data",
+            "Salary Rank",
+            "FDraft Salary Rank",
+        ]  # hidden
 
     def get_writable_row(self):
-        return [self.position, self.name, self.matchup, self.team_abbv,  # standard
-                self.projected, self.overunder, self.line,  # vegas
-                self.pass_def_rank, self.wr1_rank, self.wr2_rank,  # matchup
-                self.season_snap_percent, self.season_targets, self.season_recepts, self.season_rz_opps,  # season
-                self.last_week_snap_percent, self.last_week_targets, self.last_week_recepts, self.last_week_rz_opps,  # last week
-                self.average_ppg, 'rank', '+/- r',   # rankings
-                self.salary, self.salary_percent,  # draftkings
-                self.fdraft_salary, self.fdraft_salary_perc, '+/- fd',  # fdraft
-                self.rank, 'salaryrnk', 'fdraft rank']  # hidden
+        return [
+            self.position,
+            self.name,
+            self.matchup,
+            self.team_abbv,  # standard
+            self.projected,
+            self.overunder,
+            self.line,  # vegas
+            self.pass_def_rank,
+            self.wr1_rank,
+            self.wr2_rank,  # matchup
+            self.season_snap_percent,
+            self.season_targets,
+            self.season_recepts,
+            self.season_rz_opps,  # season
+            self.last_week_snap_percent,
+            self.last_week_targets,
+            self.last_week_recepts,
+            self.last_week_rz_opps,  # last week
+            self.average_ppg,
+            "rank",
+            "+/- r",  # rankings
+            self.salary,
+            self.salary_percent,  # draftkings
+            self.fdraft_salary,
+            self.fdraft_salary_perc,
+            "+/- fd",  # fdraft
+            self.rank,
+            "salaryrnk",
+            "fdraft rank",
+        ]  # hidden
 
     def __repr__(self):
-        return("WR({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
+        return "WR({}, {} ({}), {})".format(
+            self.name, self.salary, self.salary_percent, self.opp_excel
+        )
 
 
 class TE(Player):
@@ -441,29 +588,73 @@ class TE(Player):
         return self.rz_targets_weeks[-1]
 
     def get_writable_header(self):
-        return ['Position', 'Name', 'Opp', 'Abbv',   # standard
-                'Total', 'O/U', 'Line',  # vegas
-                'Pass DVOA', 'vs. TE',  # matchup
-                'Snap%', 'Trgts', 'Rcpts', 'RZ Opps',  # season
-                'Snap%', 'Trgts', 'Rcpts', 'RZ Opps',  # last week
-                'Ave PPG', 'ECR', '+/- Rank',   # rankings
-                'Salary', 'Salary%',  # draftkings
-                'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
-                'ECR Data', 'Salary Rank', 'FDraft Salary Rank']  # hidden
+        return [
+            "Position",
+            "Name",
+            "Opp",
+            "Abbv",  # standard
+            "Total",
+            "O/U",
+            "Line",  # vegas
+            "Pass DVOA",
+            "vs. TE",  # matchup
+            "Snap%",
+            "Trgts",
+            "Rcpts",
+            "RZ Opps",  # season
+            "Snap%",
+            "Trgts",
+            "Rcpts",
+            "RZ Opps",  # last week
+            "Ave PPG",
+            "ECR",
+            "+/- Rank",  # rankings
+            "Salary",
+            "Salary%",  # draftkings
+            "FD Salary",
+            "FD Salary%",
+            "FD +/- Rank",  # fdraft
+            "ECR Data",
+            "Salary Rank",
+            "FDraft Salary Rank",
+        ]  # hidden
 
     def get_writable_row(self):
-        return [self.position, self.name, self.matchup, self.team_abbv,  # standard
-                self.projected, self.overunder, self.line,  # vegas
-                self.pass_def_rank, self.te_rank,  # matchup
-                self.season_snap_percent, self.season_targets, self.season_recepts, self.season_rz_opps,  # season
-                self.last_week_snap_percent, self.last_week_targets, self.last_week_recepts, self.last_week_rz_opps,  # last week
-                self.average_ppg, 'rank', '+/- r',  # rankings
-                self.salary, self.salary_percent,  # draftkings
-                self.fdraft_salary, self.fdraft_salary_perc, '+/- fd',  # fdraft
-                self.rank, 'salaryrnk', 'fdraft rank']  # hidden
+        return [
+            self.position,
+            self.name,
+            self.matchup,
+            self.team_abbv,  # standard
+            self.projected,
+            self.overunder,
+            self.line,  # vegas
+            self.pass_def_rank,
+            self.te_rank,  # matchup
+            self.season_snap_percent,
+            self.season_targets,
+            self.season_recepts,
+            self.season_rz_opps,  # season
+            self.last_week_snap_percent,
+            self.last_week_targets,
+            self.last_week_recepts,
+            self.last_week_rz_opps,  # last week
+            self.average_ppg,
+            "rank",
+            "+/- r",  # rankings
+            self.salary,
+            self.salary_percent,  # draftkings
+            self.fdraft_salary,
+            self.fdraft_salary_perc,
+            "+/- fd",  # fdraft
+            self.rank,
+            "salaryrnk",
+            "fdraft rank",
+        ]  # hidden
 
     def __repr__(self):
-        return("TE({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
+        return "TE({}, {} ({}), {})".format(
+            self.name, self.salary, self.salary_percent, self.opp_excel
+        )
 
 
 class DST(Player):
@@ -473,20 +664,50 @@ class DST(Player):
         self.assign(player)
 
     def __repr__(self):
-        return("DST({}, {} ({}), {})".format(self.name, self.salary, self.salary_percent, self.opp_excel))
+        return "DST({}, {} ({}), {})".format(
+            self.name, self.salary, self.salary_percent, self.opp_excel
+        )
 
     def get_writable_header(self):
-        return ['Position', 'Name', 'Opp', 'Abbv',  # standard
-                'Total', 'O/U', 'Line',  # vegas
-                'Ave PPG', 'ECR', '+/- Rank',  # rankings
-                'Salary', 'Salary%',  # draftkings
-                'FD Salary', 'FD Salary%', 'FD +/- Rank',  # fdraft
-                'ECR Data', 'Salary Rank', 'FDraft Salary Rank']  # hidden
+        return [
+            "Position",
+            "Name",
+            "Opp",
+            "Abbv",  # standard
+            "Total",
+            "O/U",
+            "Line",  # vegas
+            "Ave PPG",
+            "ECR",
+            "+/- Rank",  # rankings
+            "Salary",
+            "Salary%",  # draftkings
+            "FD Salary",
+            "FD Salary%",
+            "FD +/- Rank",  # fdraft
+            "ECR Data",
+            "Salary Rank",
+            "FDraft Salary Rank",
+        ]  # hidden
 
     def get_writable_row(self):
-        return [self.position, self.name, self.matchup, self.team_abbv,  # standard
-                self.projected, self.overunder, self.line,  # vegas
-                self.average_ppg, 'rank', '+/- r',  # rankings
-                self.salary, self.salary_percent,  # draftkings
-                self.fdraft_salary, self.fdraft_salary_perc, '+/- fd',  # fdraft
-                self.rank, 'salaryrnk', 'fdraft rank']  # hidden
+        return [
+            self.position,
+            self.name,
+            self.matchup,
+            self.team_abbv,  # standard
+            self.projected,
+            self.overunder,
+            self.line,  # vegas
+            self.average_ppg,
+            "rank",
+            "+/- r",  # rankings
+            self.salary,
+            self.salary_percent,  # draftkings
+            self.fdraft_salary,
+            self.fdraft_salary_perc,
+            "+/- fd",  # fdraft
+            self.rank,
+            "salaryrnk",
+            "fdraft rank",
+        ]  # hidden

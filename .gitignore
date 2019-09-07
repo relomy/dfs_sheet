@@ -6,3 +6,4 @@ sources/
 
 .remote-sync.json
 
+*.csv
