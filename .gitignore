@@ -1,6 +1,8 @@
-Pipfile.lock
+.vscode/
+sources/
 
 ~*.xlsx
 *.xlsx
 
-sources/
+.remote-sync.json
+

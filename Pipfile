@@ -8,7 +8,11 @@ openpyxl = "*"
 requests = "*"
 "bs4" = "*"
 "html5lib" = "*"
-"autopep8" = "*"
 
 [dev-packages]
+black = "*"
+rope = "*"
+pylint = "*"
 
+[pipenv]
+allow_prereleases = true
