@@ -3,20 +3,23 @@
 import csv
 import json
 import re
+from os import makedirs, path
+
 import requests
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, PatternFill, Border, Side, Font, colors
 from openpyxl.formatting.rule import ColorScaleRule
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side, colors
 from openpyxl.utils import get_column_letter
-from os import path, makedirs
 
 
-def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment=None):
+def style_range(
+    worksheet, cell_range, border=Border(), fill=None, font=None, alignment=None
+):
     """
     Apply styles to a range of cells as if they were a single cell.
 
-    :param ws:  Excel worksheet instance
+    :param worksheet:  Excel worksheet instance
     :param range: An excel range to style (e.g. A1:F20)
     :param border: An openpyxl Border
     :param fill: An openpyxl PatternFill or GradientFill
@@ -27,12 +30,12 @@ def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment
     right = Border(right=border.right)
     bottom = Border(bottom=border.bottom)
 
-    first_cell = ws[cell_range.split(":")[0]]
+    first_cell = worksheet[cell_range.split(":")[0]]
     if alignment:
-        ws.merge_cells(cell_range)
+        worksheet.merge_cells(cell_range)
         first_cell.alignment = alignment
 
-    rows = ws[cell_range]
+    rows = worksheet[cell_range]
     if font:
         first_cell.font = font
 
@@ -51,9 +54,9 @@ def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment
                 c.fill = fill
 
 
-def create_sheet_header(wb, title, header):
-    wb.create_sheet(title=title)
-    wb[title].append(header)
+def create_sheet_header(workbook, title, header):
+    workbook.create_sheet(title=title)
+    workbook[title].append(header)
 
 
 def pull_data(filename, endpoint):
@@ -64,15 +67,15 @@ def pull_data(filename, endpoint):
             "{} does not exist. Pulling from endpoint [{}]".format(filename, endpoint)
         )
         # send GET request
-        r = requests.get(endpoint)
-        status = r.status_code
+        response = requests.get(endpoint)
+        status = response.status_code
 
         # if not successful, raise an exception
         if status != 200:
             raise Exception("Requests status != 200. It is: {0}".format(status))
 
         # store response
-        data = r.json()
+        data = response.json()
 
         # dump json to file for future use to avoid multiple API pulls
         with open(filename, "w") as outfile:
@@ -93,9 +96,22 @@ def pull_soup_data(filename, endpoint):
         print(
             "{} does not exist. Pulling from endpoint [{}]".format(filename, endpoint)
         )
+        headers = {
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate, sdch",
+            "Accept-Language": "en-US,en;q=0.8",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Pragma": "no-cache",
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/48.0.2564.97 Safari/537.36"
+            ),
+        }
         # send GET request
-        r = requests.get(endpoint)
-        status = r.status_code
+        response = requests.get(endpoint, headers=headers)
+        status = response.status_code
 
         # if not successful, raise an exception
         if status != 200:
@@ -103,9 +119,9 @@ def pull_soup_data(filename, endpoint):
 
         # dump html to file to avoid multiple requests
         with open(filename, "w") as outfile:
-            print(r.text, file=outfile)
+            print(response.text, file=outfile)
 
-        soup = BeautifulSoup(r.text, "html5lib")
+        soup = BeautifulSoup(response.text, "html5lib")
     else:
         print("File exists [{}]. Nice!".format(filename))
         # load html from file
@@ -115,15 +131,15 @@ def pull_soup_data(filename, endpoint):
     return soup
 
 
-def get_nfl_snaps(wb):
+def get_nfl_snaps(workbook):
     """Retrieve snaps from lineups.com API."""
     endpoint = "https://api.lineups.com/nfl/fetch/snaps/2018/OFF"
-    fn = "nfl_snaps.json"
-    dir = "sources"
-    filename = path.join(dir, fn)
+    filename = "nfl_snaps.json"
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
-    data = pull_data(filename, endpoint)
+    data = pull_data(full_path, endpoint)
 
     if data is None:
         raise Exception("Failed to pull data from API or file.")
@@ -154,14 +170,14 @@ def get_nfl_snaps(wb):
         "week15",
         "week16",
     ]
-    create_sheet_header(wb, title, header)
+    create_sheet_header(workbook, title, header)
 
-    for d in player_data:
-        name = d["full_name"]
-        position = d["position"]
-        team = d["team"]
-        weeks = d["snap_percentage_by_week"]  # list
-        season_average = d["season_snap_percent"]
+    for data in player_data:
+        name = data["full_name"]
+        position = data["position"]
+        team = data["team"]
+        weeks = data["snap_percentage_by_week"]  # list
+        season_average = data["season_snap_percent"]
 
         # we only care about RB/TE/WR
         if position not in ["RB", "TE", "WR"]:
@@ -176,20 +192,19 @@ def get_nfl_snaps(wb):
         # add three lists together
         pre_weeks = [name, position, team, season_average]
         # post_weeks = [targets, average, recv_touchdowns]
-        ls = pre_weeks + all_weeks
 
-        wb[title].append(ls)
+        workbook[title].append(pre_weeks + all_weeks)
 
 
-def get_nfl_targets(wb):
+def get_nfl_targets(workbook):
     """Retrieve targets from lineups.com API."""
     endpoint = "https://api.lineups.com/nfl/fetch/targets/2018/OFF"
-    fn = "nfl_targets.json"
-    dir = "sources"
-    filename = path.join(dir, fn)
+    filename = "nfl_targets.json"
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
-    data = pull_data(filename, endpoint)
+    data = pull_data(full_path, endpoint)
 
     player_data = data["data"]
 
@@ -219,19 +234,19 @@ def get_nfl_targets(wb):
         "targets",
         "recv touchdowns",
     ]
-    create_sheet_header(wb, title, header)
+    create_sheet_header(workbook, title, header)
 
-    for d in player_data:
+    for data in player_data:
         # TODO target percentage? it's by week as well
-        name = d["full_name"]
-        position = d["position"]
-        team = d["team"]
-        targets = d["total"]
-        weeks = d["weeks"]  # dict
-        season_average = d["average"]
-        recv_touchdowns = d["receiving_touchdowns"]
-        catch_percentage = d["catch_percentage"]
-        season_target_percent = d["season_target_percent"]
+        name = data["full_name"]
+        position = data["position"]
+        team = data["team"]
+        targets = data["total"]
+        weeks = data["weeks"]  # dict
+        season_average = data["average"]
+        recv_touchdowns = data["receiving_touchdowns"]
+        catch_percentage = data["catch_percentage"]
+        season_target_percent = data["season_target_percent"]
 
         # we only care about RB/TE/WR
         if position not in ["RB", "TE", "WR"]:
@@ -246,7 +261,6 @@ def get_nfl_targets(wb):
         # add three lists together
         pre_weeks = [name, position, team, season_average]
         post_weeks = [targets, recv_touchdowns]
-        ls = pre_weeks + all_weeks + post_weeks
 
         # insert all_weeks list into ls
         # ls = [name, position, rating, team, receptions, average, touchdowns]
@@ -254,18 +268,18 @@ def get_nfl_targets(wb):
         # ls[4:len(all_weeks)-1] = all_weeks
         # print(ls)
 
-        wb[title].append(ls)
+        workbook[title].append(pre_weeks + all_weeks + post_weeks)
 
 
-def get_nfl_receptions(wb):
+def get_nfl_receptions(workbook):
     """Retrieve receptions from lineups.com API."""
     endpoint = "https://api.lineups.com/nfl/fetch/receptions/2018/OFF"
-    fn = "nfl_receptions.json"
-    dir = "sources"
-    filename = path.join(dir, fn)
+    filename = "nfl_receptions.json"
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
-    data = pull_data(filename, endpoint)
+    data = pull_data(full_path, endpoint)
 
     # we just want player data
     player_data = data["data"]
@@ -296,16 +310,16 @@ def get_nfl_receptions(wb):
         "receptions",
         "touchdowns",
     ]
-    create_sheet_header(wb, title, header)
+    create_sheet_header(workbook, title, header)
 
-    for d in player_data:
-        name = d["name"]
-        position = d["position"]
-        team = d["team"]
-        receptions = d["receptions"]
-        weeks = d["weeks"]  # dict
-        season_average = d["average"]
-        touchdowns = d["touchdowns"]
+    for data in player_data:
+        name = data["name"]
+        position = data["position"]
+        team = data["team"]
+        receptions = data["receptions"]
+        weeks = data["weeks"]  # dict
+        season_average = data["average"]
+        touchdowns = data["touchdowns"]
 
         # we only care about RB/TE/WR
         if position not in ["RB", "TE", "WR"]:
@@ -320,20 +334,19 @@ def get_nfl_receptions(wb):
         # add three lists together
         pre_weeks = [name, position, team, season_average]
         post_weeks = [receptions, touchdowns]
-        ls = pre_weeks + all_weeks + post_weeks
 
-        wb[title].append(ls)
+        workbook[title].append(pre_weeks + all_weeks + post_weeks)
 
 
-def get_nfl_rush_atts(wb):
+def get_nfl_rush_atts(workbook):
     """Retrieve receptions from lineups.com API."""
     endpoint = "https://api.lineups.com/nfl/fetch/rush/2018/OFF"
-    fn = "nfl_rush_atts.json"
-    dir = "sources"
-    filename = path.join(dir, fn)
+    filename = "nfl_rush_atts.json"
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
-    data = pull_data(filename, endpoint)
+    data = pull_data(full_path, endpoint)
 
     # we just want player data
     player_data = data["data"]
@@ -364,17 +377,17 @@ def get_nfl_rush_atts(wb):
         "attempts",
         "touchdowns",
     ]
-    create_sheet_header(wb, title, header)
+    create_sheet_header(workbook, title, header)
 
-    for d in player_data:
+    for data in player_data:
         # TODO rushing_attempt_percentage_by_week
-        name = d["name"]
-        position = d["position"]
-        team = d["team"]
-        attempts = d["total"]
-        weeks = d["weeks"]  # dict
-        season_average = d["average"]
-        touchdowns = d["touchdowns"]
+        name = data["name"]
+        position = data["position"]
+        team = data["team"]
+        attempts = data["total"]
+        weeks = data["weeks"]  # dict
+        season_average = data["average"]
+        touchdowns = data["touchdowns"]
 
         # we only care about QB/RB/WR
         if position not in ["QB", "RB", "WR"]:
@@ -391,22 +404,22 @@ def get_nfl_rush_atts(wb):
         post_weeks = [attempts, touchdowns]
         ls = pre_weeks + all_weeks + post_weeks
 
-        wb[title].append(ls)
+        workbook[title].append(ls)
 
 
-def get_nfl_def_stats(wb):
+def get_nfl_def_stats(workbook):
     # https://www.lineups.com/nfl/teams/stats/defense-stats
     # get passing yds/att
     # td / att (td %)
     # att / completion (compl %)
     """Retrieve receptions from lineups.com API."""
     endpoint = "https://api.lineups.com/nfl/fetch/teams/stats/defense-stats/current"
-    fn = "nfl_def_stats.json"
-    dir = "sources"
-    filename = path.join(dir, fn)
+    filename = "nfl_def_stats.json"
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
-    data = pull_data(filename, endpoint)
+    data = pull_data(full_path, endpoint)
 
     # we just want player data
     player_data = data["data"]
@@ -425,7 +438,7 @@ def get_nfl_def_stats(wb):
         "pass_td_per_att",
         "compl_perc",
     ]
-    create_sheet_header(wb, title, header)
+    create_sheet_header(workbook, title, header)
 
     team_map = {
         "Atlanta Falcons": "ATL",
@@ -462,38 +475,45 @@ def get_nfl_def_stats(wb):
         "Baltimore Ravens": "BAL",
     }
 
-    for d in player_data:
+    for data in player_data:
         # TODO rushing_attempt_percentage_by_week
-        team = d["team"]
+        team = data["team"]
         team_abbv = team_map[team]
-        pass_att = d["passing_attempts"]
-        pass_yd_per_att = d["passing_yards_per_attempt"]
-        pass_compls = d["passing_completions"]
-        pass_yd_per_compl = d["passing_yards_per_completion"]
-        pass_yds = d["passing_yards"]
-        pass_tds = d["passing_touchdowns"]
+        pass_att = data["passing_attempts"]
+        pass_yd_per_att = data["passing_yards_per_attempt"]
+        pass_compls = data["passing_completions"]
+        pass_yd_per_compl = data["passing_yards_per_completion"]
+        pass_yds = data["passing_yards"]
+        pass_tds = data["passing_touchdowns"]
 
         # personal
-        pass_td_per_att = "{0:.4f}".format(pass_tds / pass_att)
-        compl_perc = "{0:.4f}".format(pass_compls / pass_att)
+        try:
+            pass_td_per_att = "{0:.4f}".format(pass_tds / pass_att)
+        except ZeroDivisionError:
+            pass_td_per_att = "{0:.4f}".format(0)
+
+        try:
+            compl_perc = "{0:.4f}".format(pass_compls / pass_att)
+        except ZeroDivisionError:
+            compl_perc = "{0:.4f}".format(0)
 
         # remove '.' from name
         # name = name.replace('.', '')
 
-        ls = [
-            team_abbv,
-            team,
-            pass_att,
-            pass_yd_per_att,
-            pass_compls,
-            pass_yd_per_compl,
-            pass_yds,
-            pass_tds,
-            compl_perc,
-            pass_td_per_att,
-        ]
-
-        wb[title].append(ls)
+        workbook[title].append(
+            [
+                team_abbv,
+                team,
+                pass_att,
+                pass_yd_per_att,
+                pass_compls,
+                pass_yd_per_compl,
+                pass_yds,
+                pass_tds,
+                compl_perc,
+                pass_td_per_att,
+            ]
+        )
 
 
 def conv_weeks_to_padded_list(weeks):
@@ -517,18 +537,70 @@ def conv_weeks_to_padded_list(weeks):
     # pad weeks to 16 (a = [])
     # more visual/pythonic
     # a = (a + N * [''])[:N]
-    N = 16
-    all_weeks = (all_weeks + N * [""])[:N]
+    var = 16
+    all_weeks = (all_weeks + var * [""])[:var]
 
     return all_weeks
 
 
-def get_vegas_rg(wb):
-    endpoint = "https://rotogrinders.com/schedules/nfl"
+# def get_vegas_ows(workbook):
+#     endpoint = "https://rotogrinders.com/schedules/nfl"
 
-    fn = "vegas_script.html"
-    dir = "sources"
-    filename = path.join(dir, fn)
+#     filename = "vegas_script.html"
+#     directory = "sources"
+#     full_path = path.join(directory, filename)
+
+#     # create worksheet
+#     title = "VEGAS"
+#     header = [
+#         "Time",
+#         "Team",
+#         "Opponent",
+#         "Line",
+#         "MoneyLine",
+#         "Over/Under",
+#         "Projected Points",
+#         "Projected Points Change",
+#     ]
+#     create_sheet_header(workbook, title, header)
+
+#     # pull data
+#     soup = pull_soup_data(full_path, endpoint)
+
+#     # find script(s) in the html
+#     script = soup.findAll("script")
+
+#     js_vegas_data = script[11].string
+
+#     # replace dumb names
+#     js_vegas_data = js_vegas_data.replace("KCC", "KC")
+#     js_vegas_data = js_vegas_data.replace("JAC", "JAX")
+
+#     pattern = re.compile(r"data = (.*);")
+
+#     json_str = pattern.search(js_vegas_data).group(1)
+#     vegas_json = json.loads(json_str)
+#     for matchup in vegas_json:
+#         workbook[title].append(
+#             [
+#                 matchup["time"]["display"],
+#                 matchup["team"],
+#                 matchup["opponent"],
+#                 matchup["line"],
+#                 matchup["moneyline"],
+#                 matchup["overunder"],
+#                 matchup["projected"],
+#                 matchup["projectedchange"]["value"],
+#             ]
+#         )
+
+
+def get_vegas_ows(workbook):
+    endpoint = "https://www.oneweekseason.com/"
+
+    filename = "vegas_script.html"
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # create worksheet
     title = "VEGAS"
@@ -542,47 +614,53 @@ def get_vegas_rg(wb):
         "Projected Points",
         "Projected Points Change",
     ]
-    create_sheet_header(wb, title, header)
+    create_sheet_header(workbook, title, header)
 
     # pull data
-    soup = pull_soup_data(filename, endpoint)
+    soup = pull_soup_data(full_path, endpoint)
 
     # find script(s) in the html
-    script = soup.findAll("script")
+    # script = soup.findAll("script")
+    # sidebar_wrapper = soup.findAll("div", {"class": "sidebar-matchup-wrapper"})
+    matchup_divs = soup.findAll("div", {"class": "game-matchup"})
 
-    js_vegas_data = script[11].string
+    matchups = []
 
-    # replace dumb names
-    js_vegas_data = js_vegas_data.replace("KCC", "KC")
-    js_vegas_data = js_vegas_data.replace("JAC", "JAX")
+    for div in matchup_divs:
+        home_team, home_total = div.find(class_="left-team").text.split()
+        away_team, away_total = div.find(class_="right-team").text.split()
+        total = home_total + away_total
 
-    pattern = re.compile(r"data = (.*);")
+        matchups.append(
+            {
+                "home_team": home_team,
+                "home_total": home_total,
+                "away_team": away_team,
+                "away_total": away_total,
+                "total": total,
+            }
+        )
 
-    json_str = pattern.search(js_vegas_data).group(1)
-    vegas_json = json.loads(json_str)
-    for matchup in vegas_json:
-        wb[title].append(
+    for matchup in matchups:
+        workbook[title].append(
             [
-                matchup["time"]["display"],
-                matchup["team"],
-                matchup["opponent"],
-                matchup["line"],
-                matchup["moneyline"],
-                matchup["overunder"],
-                matchup["projected"],
-                matchup["projectedchange"]["value"],
+                matchup["home_team"],
+                matchup["home_total"],
+                matchup["away_team"],
+                matchup["away_total"],
+                matchup["total"],
             ]
         )
 
 
-def get_dvoa_rankings(wb):
+def get_dvoa_rankings(workbook):
     endpoint = "https://www.footballoutsiders.com/stats/teamdef"
-    fn = "html_defense.html"
-    dir = "sources"
-    filename = path.join(dir, fn)
+    filename = "html_defense.html"
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # pull data
-    soup = pull_soup_data(filename, endpoint)
+    soup = pull_soup_data(full_path, endpoint)
 
     # find all tables (3) in the html
     table = soup.findAll("table")
@@ -590,7 +668,7 @@ def get_dvoa_rankings(wb):
     if table:
         # create worksheet
         title = "TEAMDEF"
-        wb.create_sheet(title=title)
+        workbook.create_sheet(title=title)
 
         defense_stats = table[0]
 
@@ -601,7 +679,7 @@ def get_dvoa_rankings(wb):
         # loop through header columns and append to worksheet
         header_cols = header_row.find_all("th")
         header = [ele.text.strip() for ele in header_cols]
-        wb[title].append(header)
+        workbook[title].append(header)
 
         # find the rest of the table header_rows
         rows = defense_stats.find_all("tr")
@@ -609,20 +687,20 @@ def get_dvoa_rankings(wb):
             cols = row.find_all("td")
             cols = [ele.text.strip() for ele in cols]
             if cols:
-                wb[title].append(cols)
+                workbook[title].append(cols)
 
         # separate function for second table
-        get_dvoa_recv_rankings(wb, table[1], title)
+        get_dvoa_recv_rankings(workbook, table[1], title)
 
 
-def get_dvoa_recv_rankings(wb, soup_table, title):
+def get_dvoa_recv_rankings(workbook, soup_table, title):
     # VS types of receivers
     def_recv_stats = soup_table
     table_header = def_recv_stats.find("thead")
     header_rows = table_header.find_all("tr")
 
     # style for merge + center
-    al = Alignment(horizontal="center", vertical="center")
+    alignment = Alignment(horizontal="center", vertical="center")
 
     # there are two header rows
     for i, row in enumerate(header_rows):
@@ -631,28 +709,28 @@ def get_dvoa_recv_rankings(wb, soup_table, title):
         # first header row has some merged cells
         if i == 0:
             # merge + center
-            wb[title]["C35"] = header[2]  # vs. WR1
-            wb[title].merge_cells("C35:F35")
-            style_range(wb[title], "C35:F35", alignment=al)
-            wb[title]["G35"] = header[3]  # vs. WR2
-            wb[title].merge_cells("G35:J35")
-            style_range(wb[title], "G35:J35", alignment=al)
-            wb[title]["K35"] = header[4]  # vs. OTHER
-            wb[title].merge_cells("K35:N35")
-            style_range(wb[title], "K35:N35", alignment=al)
-            wb[title]["O35"] = header[5]  # vs. TE
-            wb[title].merge_cells("O35:R35")
-            style_range(wb[title], "O35:R35", alignment=al)
-            wb[title]["S35"] = header[6]  # vs. RB
-            wb[title].merge_cells("S35:V35")
-            style_range(wb[title], "S35:V35", alignment=al)
+            workbook[title]["C35"] = header[2]  # vs. WR1
+            workbook[title].merge_cells("C35:F35")
+            style_range(workbook[title], "C35:F35", alignment=alignment)
+            workbook[title]["G35"] = header[3]  # vs. WR2
+            workbook[title].merge_cells("G35:J35")
+            style_range(workbook[title], "G35:J35", alignment=alignment)
+            workbook[title]["K35"] = header[4]  # vs. OTHER
+            workbook[title].merge_cells("K35:N35")
+            style_range(workbook[title], "K35:N35", alignment=alignment)
+            workbook[title]["O35"] = header[5]  # vs. TE
+            workbook[title].merge_cells("O35:R35")
+            style_range(workbook[title], "O35:R35", alignment=alignment)
+            workbook[title]["S35"] = header[6]  # vs. RB
+            workbook[title].merge_cells("S35:V35")
+            style_range(workbook[title], "S35:V35", alignment=alignment)
         elif i == 1:
-            wb[title].append(header)
+            workbook[title].append(header)
         # for c in cols:
         #     print(c.get_text(strip=True))
         # print(cols)
 
-        # create_sheet_header(wb, title, header)
+        # create_sheet_header(workbook, title, header)
         # print(header)
 
     rows = def_recv_stats.find_all("tr")
@@ -660,17 +738,17 @@ def get_dvoa_recv_rankings(wb, soup_table, title):
         cols = row.find_all("td")
         cols = [ele.text.strip() for ele in cols]
         if cols:
-            wb[title].append(cols)
+            workbook[title].append(cols)
 
 
-def get_oline_rankings(wb):
+def get_oline_rankings(workbook):
     endpoint = "https://www.footballoutsiders.com/stats/ol"
-    fn = "html_oline.html"
-    dir = "sources"
-    filename = path.join(dir, fn)
+    file_name = "html_oline.html"
+    directory = "sources"
+    full_path = path.join(directory, file_name)
 
     # pull data
-    soup = pull_soup_data(filename, endpoint)
+    soup = pull_soup_data(full_path, endpoint)
 
     # find all tables (2) in the html
     table = soup.findAll("table")
@@ -678,7 +756,7 @@ def get_oline_rankings(wb):
     if table:
         # create worksheet
         title = "OLINE"
-        wb.create_sheet(title=title)
+        workbook.create_sheet(title=title)
 
         oline_stats = table[0]
 
@@ -689,7 +767,7 @@ def get_oline_rankings(wb):
         # loop through header columns and append to worksheet
         header_cols = header_row.find_all("th")
         header = [ele.text.strip() for ele in header_cols]
-        wb[title].append(header)
+        workbook[title].append(header)
 
         # find the rest of the table header_rows
         rows = oline_stats.find_all("tr")
@@ -697,17 +775,17 @@ def get_oline_rankings(wb):
             cols = row.find_all("td")
             cols = [ele.text.strip() for ele in cols]
             if cols:
-                wb[title].append(cols)
+                workbook[title].append(cols)
 
 
-def get_dline_rankings(wb):
+def get_dline_rankings(workbook):
     endpoint = "https://www.footballoutsiders.com/stats/dl"
-    fn = "html_dline.html"
-    dir = "sources"
-    filename = path.join(dir, fn)
+    filename = "html_dline.html"
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # pull data
-    soup = pull_soup_data(filename, endpoint)
+    soup = pull_soup_data(full_path, endpoint)
 
     # find all tables (2) in the html
     table = soup.findAll("table")
@@ -715,7 +793,7 @@ def get_dline_rankings(wb):
     if table:
         # create worksheet
         title = "DLINE"
-        wb.create_sheet(title=title)
+        workbook.create_sheet(title=title)
 
         oline_stats = table[0]
 
@@ -726,7 +804,7 @@ def get_dline_rankings(wb):
         # loop through header columns and append to worksheet
         header_cols = header_row.find_all("th")
         header = [ele.text.strip() for ele in header_cols]
-        wb[title].append(header)
+        workbook[title].append(header)
 
         # find the rest of the table header_rows
         rows = oline_stats.find_all("tr")
@@ -734,28 +812,28 @@ def get_dline_rankings(wb):
             cols = row.find_all("td")
             cols = [ele.text.strip() for ele in cols]
             if cols:
-                wb[title].append(cols)
+                workbook[title].append(cols)
 
 
-def get_qb_stats_FO(wb):
+def get_qb_stats_outsiders(workbook):
     endpoint = "https://www.footballoutsiders.com/stats/qb"
-    fn = "html_qb.html"
-    dir = "sources"
-    filename = path.join(dir, fn)
+    filename = "html_qb.html"
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # pull data
-    soup = pull_soup_data(filename, endpoint)
+    soup = pull_soup_data(full_path, endpoint)
 
     # find all tables (3) in the html
-    table = soup.findAll("table")
+    tables = soup.findAll("table")
 
-    if table:
+    if tables:
         # create worksheet
         title = "QB_STATS"
-        wb.create_sheet(title=title)
+        workbook.create_sheet(title=title)
 
-        for t in table:
-            qb_stats = t
+        for table in tables:
+            qb_stats = table
 
             # find header
             table_header = qb_stats.find("thead")
@@ -764,7 +842,7 @@ def get_qb_stats_FO(wb):
             # loop through header columns and append to worksheet
             header_cols = header_row.find_all("th")
             header = [ele.text.strip() for ele in header_cols]
-            wb[title].append(header)
+            workbook[title].append(header)
 
             # find the rest of the table header_rows
             rows = qb_stats.find_all("tr")
@@ -772,10 +850,10 @@ def get_qb_stats_FO(wb):
                 cols = row.find_all("td")
                 cols = [ele.text.strip() for ele in cols]
                 if cols:
-                    wb[title].append(cols)
+                    workbook[title].append(cols)
 
 
-def fpros_ecr(wb, position):
+def fpros_ecr(workbook, position):
     if position == "QB" or position == "DST":
         endpoint = "https://www.fantasypros.com/nfl/rankings/{}.php".format(
             position.lower()
@@ -785,12 +863,12 @@ def fpros_ecr(wb, position):
             position.lower()
         )
 
-    fn = "ecr_{}.html".format(position)
-    dir = "sources"
-    filename = path.join(dir, fn)
+    filename = "ecr_{}.html".format(position)
+    directory = "sources"
+    full_path = path.join(directory, filename)
 
     # pull data
-    soup = pull_soup_data(filename, endpoint)
+    soup = pull_soup_data(full_path, endpoint)
 
     # find all tables (2) in the html
     table = soup.find("table", id="rank-data")
@@ -798,7 +876,7 @@ def fpros_ecr(wb, position):
     if table:
         # create worksheet
         title = "{0}_ECR".format(position)
-        wb.create_sheet(title=title)
+        workbook.create_sheet(title=title)
 
         # # find header
         table_header = table.find("thead")
@@ -807,7 +885,7 @@ def fpros_ecr(wb, position):
         # loop through header columns and append to worksheet
         header_cols = header_row.find_all("th")
         header = [ele.text.strip() for ele in header_cols]
-        wb[title].append(header)
+        workbook[title].append(header)
 
         # find the rest of the table header_rows
         rows = table.find_all("tr")
@@ -816,28 +894,34 @@ def fpros_ecr(wb, position):
             # cols = [ele.text.strip() for ele in cols]
             # change from list comp for just fpros
             new_cols = []
-            for ele in cols:
-                txt = ele.text.strip()
+            for i, ele in enumerate(cols):
+
+                if i == 2:  # name of player
+                    txt = ele.find(class_="full-name").text
+
+                    # remove periods (T.J. Yeldon, T.Y. Hilton)
+                    txt = txt.replace(".", "")
+                else:
+                    txt = ele.text.strip()
                 # replace JAX
                 txt = txt.replace("JAC", "JAX")
-                # remove periods (T.J. Yeldon, T.Y. Hilton)
-                txt = txt.replace(".", "")
+
                 # really? just to fix mitchell?
                 if position == "QB":
                     txt = txt.replace("Mitch", "Mitchell")
                 new_cols.append(txt)
-            if cols:
-                wb[title].append(new_cols)
+            if new_cols:
+                workbook[title].append(new_cols)
 
 
-def position_tab(wb, values, title, fdraft_dict=None):
+def position_tab(workbook, values, title, fdraft_dict=None):
     # create positional tab if it does not exist
     # and set header(s)
-    if title not in wb.sheetnames:
-        wb.create_sheet(title=title)
+    if title not in workbook.sheetnames:
+        workbook.create_sheet(title=title)
 
         # style for merge + center
-        al = Alignment(horizontal="center", vertical="center")
+        alignment = Alignment(horizontal="center", vertical="center")
 
         # second header
         all_positions_header = [
@@ -853,18 +937,18 @@ def position_tab(wb, values, title, fdraft_dict=None):
         ]
 
         # set row height
-        wb[title].row_dimensions[2].height = 40
+        workbook[title].row_dimensions[2].height = 40
 
         # more header fields based on position
         position_fields = []
         if title == "QB":
-            top_lvl_header(wb, title, "DK", "E", 1, "FF000000")
-            top_lvl_header(wb, title, "VEGAS", "G", 2, "FFFFC000")
-            top_lvl_header(wb, title, "SEASON", "J", 2, "FF5B9BD5")
-            top_lvl_header(wb, title, "PRESSURE", "M", 1, "FF00B0F0")
-            top_lvl_header(wb, title, "MATCHUP", "O", 2, "FFED7D31")
-            top_lvl_header(wb, title, "RANKINGS", "R", 2, "FF70AD47")
-            top_lvl_header(wb, title, "FDRAFT", "W", 1, "FFA8F3D9")
+            top_lvl_header(workbook, title, "DK", "E", 1, "FF000000")
+            top_lvl_header(workbook, title, "VEGAS", "G", 2, "FFFFC000")
+            top_lvl_header(workbook, title, "SEASON", "J", 2, "FF5B9BD5")
+            top_lvl_header(workbook, title, "PRESSURE", "M", 1, "FF00B0F0")
+            top_lvl_header(workbook, title, "MATCHUP", "O", 2, "FFED7D31")
+            top_lvl_header(workbook, title, "RANKINGS", "R", 2, "FF70AD47")
+            top_lvl_header(workbook, title, "FDRAFT", "W", 1, "FFA8F3D9")
 
             position_fields = [
                 "Rushing Yards",
@@ -884,13 +968,13 @@ def position_tab(wb, values, title, fdraft_dict=None):
                 "FD Salary%",
             ]
         elif title == "RB":
-            top_lvl_header(wb, title, "DK", "E", 1, "FF000000")
-            top_lvl_header(wb, title, "VEGAS", "G", 2, "FFFFC000")
-            top_lvl_header(wb, title, "MATCHUP", "J", 3, "FFED7D31")
-            top_lvl_header(wb, title, "SEASON", "N", 2, "FF5B9BD5")
-            top_lvl_header(wb, title, "LAST WEEK", "Q", 2, "FF4472C4")
-            top_lvl_header(wb, title, "RANKINGS", "T", 2, "FF70AD47")
-            top_lvl_header(wb, title, "FDRAFT", "Y", 1, "FFA8F3D9")
+            top_lvl_header(workbook, title, "DK", "E", 1, "FF000000")
+            top_lvl_header(workbook, title, "VEGAS", "G", 2, "FFFFC000")
+            top_lvl_header(workbook, title, "MATCHUP", "J", 3, "FFED7D31")
+            top_lvl_header(workbook, title, "SEASON", "N", 2, "FF5B9BD5")
+            top_lvl_header(workbook, title, "LAST WEEK", "Q", 2, "FF4472C4")
+            top_lvl_header(workbook, title, "RANKINGS", "T", 2, "FF70AD47")
+            top_lvl_header(workbook, title, "FDRAFT", "Y", 1, "FFA8F3D9")
 
             position_fields = [
                 "Run DVOA",
@@ -912,13 +996,13 @@ def position_tab(wb, values, title, fdraft_dict=None):
                 "FD Salary%",
             ]
         elif title == "WR":
-            top_lvl_header(wb, title, "DK", "E", 1, "FF000000")
-            top_lvl_header(wb, title, "VEGAS", "G", 2, "FFFFC000")
-            top_lvl_header(wb, title, "MATCHUP", "J", 2, "FFED7D31")
-            top_lvl_header(wb, title, "SEASON", "M", 2, "FF5B9BD5")
-            top_lvl_header(wb, title, "LAST WEEK", "P", 2, "FF4472C4")
-            top_lvl_header(wb, title, "RANKINGS", "S", 2, "FF70AD47")
-            top_lvl_header(wb, title, "FDRAFT", "X", 1, "FFA8F3D9")
+            top_lvl_header(workbook, title, "DK", "E", 1, "FF000000")
+            top_lvl_header(workbook, title, "VEGAS", "G", 2, "FFFFC000")
+            top_lvl_header(workbook, title, "MATCHUP", "J", 2, "FFED7D31")
+            top_lvl_header(workbook, title, "SEASON", "M", 2, "FF5B9BD5")
+            top_lvl_header(workbook, title, "LAST WEEK", "P", 2, "FF4472C4")
+            top_lvl_header(workbook, title, "RANKINGS", "S", 2, "FF70AD47")
+            top_lvl_header(workbook, title, "FDRAFT", "X", 1, "FFA8F3D9")
 
             position_fields = [
                 "Pass DVOA",
@@ -939,13 +1023,13 @@ def position_tab(wb, values, title, fdraft_dict=None):
                 "FD Salary%",
             ]
         elif title == "TE":
-            top_lvl_header(wb, title, "DK", "E", 1, "FF000000")
-            top_lvl_header(wb, title, "VEGAS", "G", 2, "FFFFC000")
-            top_lvl_header(wb, title, "MATCHUP", "J", 1, "FFED7D31")
-            top_lvl_header(wb, title, "SEASON", "L", 1, "FF5B9BD5")
-            top_lvl_header(wb, title, "LAST WEEK", "N", 1, "FF4472C4")
-            top_lvl_header(wb, title, "RANKINGS", "P", 2, "FF70AD47")
-            top_lvl_header(wb, title, "FDRAFT", "U", 1, "FFA8F3D9")
+            top_lvl_header(workbook, title, "DK", "E", 1, "FF000000")
+            top_lvl_header(workbook, title, "VEGAS", "G", 2, "FFFFC000")
+            top_lvl_header(workbook, title, "MATCHUP", "J", 1, "FFED7D31")
+            top_lvl_header(workbook, title, "SEASON", "L", 1, "FF5B9BD5")
+            top_lvl_header(workbook, title, "LAST WEEK", "N", 1, "FF4472C4")
+            top_lvl_header(workbook, title, "RANKINGS", "P", 2, "FF70AD47")
+            top_lvl_header(workbook, title, "FDRAFT", "U", 1, "FFA8F3D9")
 
             position_fields = [
                 "Pass DVOA",
@@ -963,9 +1047,9 @@ def position_tab(wb, values, title, fdraft_dict=None):
                 "FD Salary%",
             ]
         elif title == "DST":
-            top_lvl_header(wb, title, "DK", "E", 1, "FF000000")
-            top_lvl_header(wb, title, "VEGAS", "G", 2, "FFFFC000")
-            top_lvl_header(wb, title, "RANKINGS", "J", 2, "FF70AD47")
+            top_lvl_header(workbook, title, "DK", "E", 1, "FF000000")
+            top_lvl_header(workbook, title, "VEGAS", "G", 2, "FFFFC000")
+            top_lvl_header(workbook, title, "RANKINGS", "J", 2, "FF70AD47")
 
             position_fields = [
                 "Ave PPG",
@@ -978,21 +1062,21 @@ def position_tab(wb, values, title, fdraft_dict=None):
             ]
 
         # find max row to append
-        append_row = wb[title].max_row + 1
+        append_row = workbook[title].max_row + 1
         header = all_positions_header + position_fields
 
         # change row font and alignment
         font = Font(b=True, color="FF000000")
-        al = Alignment(horizontal="center", vertical="center", wrapText=True)
+        alignment = Alignment(horizontal="center", vertical="center", wrapText=True)
 
         # just set for row range
         rng = "{0}:{1}".format(2, 2)
-        for cell in wb[title][rng]:
+        for cell in workbook[title][rng]:
             cell.font = font
-            cell.alignment = al
+            cell.alignment = alignment
 
         for i, field in enumerate(header):
-            wb[title].cell(row=append_row, column=i + 1, value=field)
+            workbook[title].cell(row=append_row, column=i + 1, value=field)
 
     keys = [
         "pos",
@@ -1026,7 +1110,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
         stats_dict["opp_excel"] = "at {}".format(home_team)
 
     # find max row to append
-    append_row = wb[title].max_row + 1
+    append_row = workbook[title].max_row + 1
 
     # insert rows of data
     all_positions_fields = [
@@ -1051,7 +1135,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
     positional_fields = []
 
     # get max_row from position ECR tab
-    max_row = wb[title + "_ECR"].max_row + 1
+    max_row = workbook[title + "_ECR"].max_row + 1
     if title == "QB":
         positional_fields = [
             # rushing yards
@@ -1120,24 +1204,25 @@ def position_tab(wb, values, title, fdraft_dict=None):
             ),
             # salary rank (low to high)
             "=RANK(E{0}, $E$3:$E${1},0)".format(append_row, max_row),
-            # fdraft salary
-            fdraft_dict[name]["salary"],
-            # fdraft salary perc
-            fdraft_dict[name]["salary_perc"],
         ]
+        # fdraft salary
+        if fdraft_dict and name in fdraft_dict:
+            positional_fields.append(fdraft_dict[name]["salary"])
+            # fdraft salary perc
+            positional_fields.append(fdraft_dict[name]["salary_perc"])
         # style column L & M (pressure %) with %/decimals
-        for cell in wb[title]["M"]:
+        for cell in workbook[title]["M"]:
             cell.number_format = "##0.0%"
-        for cell in wb[title]["N"]:
+        for cell in workbook[title]["N"]:
             cell.number_format = "##0.0%"
         # style column L & M (matchup %) with %/decimals
-        for cell in wb[title]["P"]:
+        for cell in workbook[title]["P"]:
             cell.number_format = "##0.0%"
-        for cell in wb[title]["Q"]:
+        for cell in workbook[title]["Q"]:
             cell.number_format = "##0.0%"
 
     elif title == "RB":
-        max_row = wb[title + "_ECR"].max_row
+        max_row = workbook[title + "_ECR"].max_row
         positional_fields = [
             # run dvoa
             # 'x',  # for testing bld_excel_formula_2
@@ -1310,7 +1395,7 @@ def position_tab(wb, values, title, fdraft_dict=None):
             # fdraft_dict[name]['salary_perc'],
         ]
 
-    if name in fdraft_dict:
+    if fdraft_dict and name in fdraft_dict:
         positional_fields.extend(
             [
                 # fdraft salary
@@ -1321,42 +1406,42 @@ def position_tab(wb, values, title, fdraft_dict=None):
         )
 
     row = all_positions_fields + positional_fields
-
+    
     # center all cells horzitontally/vertically in row
     for i, text in enumerate(row, start=1):
-        nice = wb[title].cell(row=append_row, column=i, value=text)
-        al = Alignment(horizontal="center", vertical="center")
-        nice.alignment = al
+        nice = workbook[title].cell(row=append_row, column=i, value=text)
+        alignment = Alignment(horizontal="center", vertical="center")
+        nice.alignment = alignment
 
     # style column D (salary) with currency
-    for cell in wb[title][find_header_col(wb[title], "Salary")]:
+    for cell in workbook[title][find_header_col(workbook[title], "Salary")]:
         cell.number_format = "$#,##0_);($#,##0)"
 
     # style column E (salary %) with %/decimals
-    for cell in wb[title][find_header_col(wb[title], "Salary%")]:
+    for cell in workbook[title][find_header_col(workbook[title], "Salary%")]:
         cell.number_format = "##0.0%"
 
-    for cell in wb[title][find_header_col(wb[title], "FD Salary")]:
+    for cell in workbook[title][find_header_col(workbook[title], "FD Salary")]:
         cell.number_format = "$#,##0_);($#,##0)"
 
-    for cell in wb[title][find_header_col(wb[title], "FD Salary%")]:
+    for cell in workbook[title][find_header_col(workbook[title], "FD Salary%")]:
         cell.number_format = "##0.0%"
 
     # hide column F (abbv)
-    wb[title].column_dimensions["D"].hidden = True
+    workbook[title].column_dimensions["D"].hidden = True
 
 
-def find_header_col(ws, header_value):
+def find_header_col(worksheet, header_value):
     header_row = 2
     # search through header_row for value
-    for cell in ws[header_row]:
+    for cell in worksheet[header_row]:
         if cell.value == header_value:
-            return cell.column
+            return cell.column_letter
     return None
 
 
-def write_RB_cols(wb):
-    ws = wb["RB"]
+def write_RB_cols(workbook):
+    worksheet = workbook["RB"]
     position_fields = [
         "Run DVOA",
         "Pass DVOA",
@@ -1375,14 +1460,14 @@ def write_RB_cols(wb):
         "Salary Rank",
     ]
     # set max_row for formulas
-    max_row = ws.max_row
+    max_row = worksheet.max_row
 
     for field in position_fields:
-        header_col = find_header_col(ws, field)
+        header_col = find_header_col(worksheet, field)
         print("field {} is in header column {}".format(field, header_col))
         # run dvoa
         if field == "Run DVOA":
-            for cell in ws[header_col]:
+            for cell in worksheet[header_col]:
                 # skip header rows
                 if cell.row <= 2:
                     continue
@@ -1399,7 +1484,7 @@ def write_RB_cols(wb):
                     right=True,
                 )
         elif field == "Pass DVOA":
-            for cell in ws[header_col]:
+            for cell in worksheet[header_col]:
                 # skip header rows
                 if cell.row <= 2:
                     continue
@@ -1443,7 +1528,7 @@ def write_RB_cols(wb):
         # bld_excel_formula('RB_ECR', '$A$2:$A${}'.format(max_row), '$B', append_row, '$C$2:$C${}'.format(max_row)),
 
 
-def top_lvl_header(wb, title, text, start_col, length, color):
+def top_lvl_header(workbook, title, text, start_col, length, color):
     # style for merge + center
     al = Alignment(horizontal="center", vertical="center")
     # bold font
@@ -1451,11 +1536,11 @@ def top_lvl_header(wb, title, text, start_col, length, color):
 
     # set cell to start merge + insert text
     cell = "{0}1".format(start_col)
-    wb[title][cell] = text
+    workbook[title][cell] = text
     # set range to format merged cells
     fmt_range = "{0}1:{1}1".format(start_col, chr(ord(start_col) + length))
     style_range(
-        wb[title],
+        workbook[title],
         fmt_range,
         font=font,
         fill=PatternFill(patternType="solid", fgColor=color),
@@ -1549,7 +1634,7 @@ def bld_excel_formula(
     return "=" + formula
 
 
-def apply_border(wb):
+def apply_border(workbook):
     border = Border(
         left=Side(border_style="thin", color="FF000000"),
         right=Side(border_style="thin", color="FF000000"),
@@ -1557,26 +1642,26 @@ def apply_border(wb):
 
     for title in ["QB", "RB", "WR", "TE", "DST"]:
         # select worksheet
-        ws = wb[title]
+        worksheet = workbook[title]
         # find header columns (None = empty cell)
         fields = []
-        for cell in ws[1]:
+        for cell in worksheet[1]:
             if cell.value is not None:
-                fields.append(cell.column)
+                fields.append(cell.column_letter)
                 # print("field: {} [{}] [idx: {}]".format(cell.value, cell.column, cell.col_idx))
 
         # add max column (letter) to field
-        fields.append(get_column_letter(ws.max_column))
+        fields.append(get_column_letter(worksheet.max_column))
 
         # skip first field
         for i in range(1, len(fields)):
             fmt_range = "{0}1:{1}{2}".format(
-                fields[i - 1], chr(ord(fields[i]) - 1), ws.max_row
+                fields[i - 1], chr(ord(fields[i]) - 1), worksheet.max_row
             )
-            style_range(ws, fmt_range, border=border)
+            style_range(worksheet, fmt_range, border=border)
 
 
-def style_ranges(wb):
+def style_ranges(workbook):
     # define colors for colorscale (from excel)
     red = "F8696B"
     yellow = "FFEB84"
@@ -1584,13 +1669,13 @@ def style_ranges(wb):
     white = "FFFFFF"
 
     for title in ["QB", "RB", "WR", "TE", "DST"]:
-        ws = wb[title]
+        worksheet = workbook[title]
         # add filter/sort. excel will not automatically do it!
-        # filter_range = "{0}:{1}".format('D2', ws.max_row)
-        # ws.auto_filter.ref = filter_range
-        # sort_range = "{0}:{1}".format('D3', ws.max_row)
+        # filter_range = "{0}:{1}".format('D2', worksheet.max_row)
+        # worksheet.auto_filter.ref = filter_range
+        # sort_range = "{0}:{1}".format('D3', worksheet.max_row)
 
-        # ws.auto_filter.add_sort_condition(sort_range)
+        # worksheet.auto_filter.add_sort_condition(sort_range)
         # bigger/positive = green, smaller/negative = red
         green_to_red_headers = [
             "Implied Total",
@@ -1646,116 +1731,137 @@ def style_ranges(wb):
             end_color=green,
         )
         # color ranges
-        for i in range(1, ws.max_column + 1):
-            if ws.cell(row=2, column=i).value in green_to_red_headers:
+        for i in range(1, worksheet.max_column + 1):
+            if worksheet.cell(row=2, column=i).value in green_to_red_headers:
                 column_letter = get_column_letter(i)
                 # color range (green to red)
-                cell_rng = "{0}{1}:{2}".format(column_letter, "3", ws.max_row)
-                # print("[{}] Coloring {} [{} - {}] green_to_red".format(title, ws.cell(row=2, column=i).value, ws.cell(row=2, column=i), cell_rng))
-                wb[title].conditional_formatting.add(cell_rng, green_to_red_rule)
-            elif ws.cell(row=2, column=i).value in red_to_green_headers:
+                cell_rng = "{0}{1}:{0}{2}".format(column_letter, "3", worksheet.max_row)
+                # print("[{}] Coloring {} [{} - {}] green_to_red".format(title, worksheet.cell(row=2, column=i).value, worksheet.cell(row=2, column=i), cell_rng))
+                workbook[title].conditional_formatting.add(cell_rng, green_to_red_rule)
+            elif worksheet.cell(row=2, column=i).value in red_to_green_headers:
                 column_letter = get_column_letter(i)
                 # color range (red to green)
-                cell_rng = "{0}{1}:{2}".format(column_letter, "3", ws.max_row)
-                # print("[{}] Coloring {} [{} - {}] red_to_green".format(title, ws.cell(row=2, column=i).value, ws.cell(row=2, column=i), cell_rng))
-                wb[title].conditional_formatting.add(cell_rng, red_to_green_rule)
-            elif ws.cell(row=2, column=i).value in white_middle_headers:
+                cell_rng = "{0}{1}:{0}{2}".format(column_letter, "3", worksheet.max_row)
+                # print("[{}] Coloring {} [{} - {}] red_to_green".format(title, worksheet.cell(row=2, column=i).value, worksheet.cell(row=2, column=i), cell_rng))
+                workbook[title].conditional_formatting.add(cell_rng, red_to_green_rule)
+            elif worksheet.cell(row=2, column=i).value in white_middle_headers:
                 column_letter = get_column_letter(i)
                 # color range (red to green)
-                cell_rng = "{0}{1}:{2}".format(column_letter, "3", ws.max_row)
-                # print("[{}] Coloring {} [{} - {}] red_to_green".format(title, ws.cell(row=2, column=i).value, ws.cell(row=2, column=i), cell_rng))
-                wb[title].conditional_formatting.add(cell_rng, white_middle_rule)
+                cell_rng = "{0}{1}:{0}{2}".format(column_letter, "3", worksheet.max_row)
+                # print("[{}] Coloring {} [{} - {}] red_to_green".format(title, worksheet.cell(row=2, column=i).value, worksheet.cell(row=2, column=i), cell_rng))
+                workbook[title].conditional_formatting.add(cell_rng, white_middle_rule)
 
 
-def apply_column_widths(wb):
+def apply_column_widths(workbook):
     # set column widths
     # column_widths = [8, 20, 10, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]
 
     # for i, column_width in enumerate(column_widths):
-    # ws.column_dimensions[get_column_letter(i + 1)].width = column_width
+    # worksheet.column_dimensions[get_column_letter(i + 1)].width = column_width
     for title in ["QB", "RB", "WR", "TE", "DST"]:
-        ws = wb[title]
-        for i, cell in enumerate(ws[2]):
+        try:
+            worksheet = workbook[title]
+        except KeyError as ex:
+            print(f"apply_column_widths(): {ex}")
+            return
+
+        for i, cell in enumerate(worksheet[2]):
             # print(cell)
             if cell.value == "Name":
-                ws.column_dimensions[get_column_letter(i + 1)].width = 20
+                worksheet.column_dimensions[get_column_letter(i + 1)].width = 20
             elif cell.value == "Opp":
-                ws.column_dimensions[get_column_letter(i + 1)].width = 10
+                worksheet.column_dimensions[get_column_letter(i + 1)].width = 10
             elif cell.value == "Position":
-                ws.column_dimensions[get_column_letter(i + 1)].width = 8
+                worksheet.column_dimensions[get_column_letter(i + 1)].width = 8
             elif cell.value == "FD Salary":
-                ws.column_dimensions[get_column_letter(i + 1)].width = 9
+                worksheet.column_dimensions[get_column_letter(i + 1)].width = 9
             elif cell.value == "+/- Rank":
-                ws.column_dimensions[get_column_letter(i + 1)].width = 5
+                worksheet.column_dimensions[get_column_letter(i + 1)].width = 5
             else:
-                ws.column_dimensions[get_column_letter(i + 1)].width = 7.7
+                worksheet.column_dimensions[get_column_letter(i + 1)].width = 7.7
 
 
 def bool_found_player_in_ecr_tab(ws_column, name):
     # loop through cells in column
-    for c in ws_column:
+    for column in ws_column:
         # if cell is empty, continue
-        if c.value is None:
+        if column.value is None:
             continue
 
         # if name is found, move along
-        if name in c.value:
+        if name in column.value:
             return True
     return False
 
 
-def freeze_header(wb):
+def freeze_header(workbook):
     # freeze header
     for title in ["QB", "RB", "WR", "TE", "DST"]:
-        ws = wb[title]
-        ws.freeze_panes = "{}3".format(get_column_letter(ws.max_column))
+        try:
+            worksheet = workbook[title]
+        except KeyError as ex:
+            print(f"freeze_header(): {ex}")
+            return
+        worksheet.freeze_panes = "{}3".format(get_column_letter(worksheet.max_column))
 
 
-def order_sheets(wb):
+def order_sheets(workbook):
     # pull indices from QB, RB, WR, TE, DST to be ordered first
-    order = [wb.worksheets.index(wb[i]) for i in ["QB", "RB", "WR", "TE", "DST"]]
+    order = [
+        workbook.worksheets.index(workbook[i])
+        for i in ["QB", "RB", "WR", "TE", "DST"]
+        if i in workbook.sheetnames
+    ]
 
-    # create set from 0 to len(wb._sheets)
+    # create set from 0 to len(workbook._sheets)
     # subtract unique values from set and extend list to fill in missing values
-    order.extend(list(set(range(len(wb._sheets))) - set(order)))
-    wb._sheets = [wb._sheets[i] for i in order]
+    order.extend(list(set(range(len(workbook._sheets))) - set(order)))
+    workbook._sheets = [workbook._sheets[i] for i in order]
 
 
-def check_name_in_ecr(wb, position, name):
+def check_name_in_ecr(workbook, position, name):
     # get ECR sheet
-    ecr_ws = wb[position + "_ECR"]
+    if position + "_ECR" not in workbook.sheetnames:
+        return False
+
+    ecr_ws = workbook[position + "_ECR"]
     search_col = "C"
 
     # search ECR sheet for guy
     return bool_found_player_in_ecr_tab(ecr_ws[search_col], name)
 
 
-def insert_ranks(wb):
+def insert_ranks(workbook):
     for position in ["QB", "RB", "WR", "TE", "DST"]:
-        ws = wb[position]
+        # check if workbook exists
+        try:
+            worksheet = workbook[position]
+        except KeyError as ex:
+            print(f"insert_ranks(): {ex}")
+            continue
 
         ecr_col = ""
         ecr_data_col = ""
         salary_col = ""
         salary_rank_col = ""
         plus_minus_col = ""
-        max_row = ws.max_row
+        max_row = worksheet.max_row
 
         # look through header row and pull header columns
-        for col in ws[2]:
+        for col in worksheet[2]:
             if col.value == "ECR":
-                ecr_col = col.column
+                ecr_col = col.column_letter
             elif col.value == "ECR Data":
-                ecr_data_col = col.column
+                ecr_data_col = col.column_letter
             elif col.value == "Salary":
-                salary_col = col.column
+                salary_col = col.column_letter
             elif col.value == "Salary Rank":
-                salary_rank_col = col.column
+                salary_rank_col = col.column_letter
             elif col.value == "+/- Rank":
-                plus_minus_col = col.column
+                plus_minus_col = col.column_letter
 
         # ECR rank
-        for cell in ws[ecr_col]:
+        for cell in worksheet[ecr_col]:
             # skip header rows
             if cell.row <= 2:
                 continue
@@ -1764,7 +1870,7 @@ def insert_ranks(wb):
             )
 
         # salary rank
-        for cell in ws[salary_rank_col]:
+        for cell in worksheet[salary_rank_col]:
             # skip header rows
             if cell.row <= 2:
                 continue
@@ -1773,7 +1879,7 @@ def insert_ranks(wb):
             )
 
         # +/- rank
-        for cell in ws[plus_minus_col]:
+        for cell in worksheet[plus_minus_col]:
             # skip header rows
             if cell.row <= 2:
                 continue
@@ -1782,15 +1888,15 @@ def insert_ranks(wb):
         # hide data columns
         # print("1: {}".format(ecr_data_col))
         # print("2: {}".format(salary_rank_col))
-        # print("3: {}".format(ws))
-        # print("4: {}".format(ws.column_dimensions[ecr_data_col]))
-        ws.column_dimensions[ecr_data_col].hidden = True
-        ws.column_dimensions[salary_rank_col].hidden = True
+        # print("3: {}".format(worksheet))
+        # print("4: {}".format(worksheet.column_dimensions[ecr_data_col]))
+        worksheet.column_dimensions[ecr_data_col].hidden = True
+        worksheet.column_dimensions[salary_rank_col].hidden = True
 
 
 def read_fantasy_draft_csv(filename):
-    with open(filename, "r") as f:
-        reader = csv.reader(f)
+    with open(filename, "r") as file:
+        reader = csv.reader(file)
 
         # store header row (and strip extra spaces)
         headers = [header.lower().strip() for header in next(reader)]
@@ -1810,7 +1916,7 @@ def read_fantasy_draft_csv(filename):
             dictionary[row[1]] = {key: value for key, value in zip(headers, row)}
         return dictionary
         # # read entire file into memory
-        # lines = f.readlines()
+        # lines = file.readlines()
 
         # for i, line in enumerate(lines):
         #     # skip header
@@ -1823,28 +1929,26 @@ def read_fantasy_draft_csv(filename):
         #     exit()
 
 
-def print_fantasy_draft_to_wb(wb, fdraft_dict):
-    ws = wb.active
+# def print_fantasy_draft_to_wb(workbook, fdraft_dict):
+#     worksheet = workbook.active
 
-    for key, value in fdraft_dict.items():
-        player = value
-        # print(player)
-        # ws.append([player[key] for key in player])
-        # for k, v in player.items():
-        # print("{}: {}".format(k, v))
+#     for key, value in fdraft_dict.items():
+#         player = value
+#         # print(player)
+#         # worksheet.append([player[key] for key in player])
+#         # for k, v in player.items():
+#         # print("{}: {}".format(k, v))
 
 
 def main():
-    fn = "DKSalaries_NFL_Sunday_week1.csv"
+    filename = "DKSalaries_NFL_Sunday_week1.csv"
     dest_filename = "sheet.xlsx"
 
     # create workbook/worksheet
-    wb = Workbook()
-    ws1 = wb.active
+    workbook = Workbook()
+    workbook.guess_types = True  # guess types (numbers, floats, etc)
+    ws1 = workbook.active
     ws1.title = "DEL"
-
-    # guess types (numbers, floats, etc)
-    wb.guess_types = True
 
     # make sources dir if it does not exist
     directory = "sources"
@@ -1853,19 +1957,19 @@ def main():
 
     # pull positional stats from fantasypros.com
     for position in ["QB", "RB", "WR", "TE", "DST"]:
-        fpros_ecr(wb, position)
+        fpros_ecr(workbook, position)
 
     fdraft_csv = "FDraft_week8_full.csv"
     if path.exists(fdraft_csv):
         fdraft_dict = read_fantasy_draft_csv(fdraft_csv)
     else:
         fdraft_dict = None
-    #     print_fantasy_draft_to_wb(wb, fdraft_dict)
-    #     wb.save(filename=dest_filename)
+    #     print_fantasy_draft_to_wb(workbook, fdraft_dict)
+    #     workbook.save(filename=dest_filename)
 
-    with open(fn, "r") as f:
+    with open(filename, "r") as file:
         # read entire file into memory
-        lines = f.readlines()
+        lines = file.readlines()
 
         for i, line in enumerate(lines):
             # skip header
@@ -1887,57 +1991,58 @@ def main():
                 name = fields[7]
 
             # if player does not exist, skip
-            if check_name_in_ecr(wb, position, name) is False:
+            if check_name_in_ecr(workbook, position, name) is False:
                 # print("Could not find {} [{}]".format(name, position))
                 continue
 
-            position_tab(wb, fields, fields[0], fdraft_dict)
+            position_tab(workbook, fields, fields[0], fdraft_dict)
 
     # pull stats from lineups.com
-    get_nfl_receptions(wb)
-    get_nfl_targets(wb)
-    get_nfl_snaps(wb)
-    get_nfl_rush_atts(wb)
-    get_nfl_def_stats(wb)
+    # get_nfl_receptions(workbook)
+    # get_nfl_targets(workbook)
+    # get_nfl_snaps(workbook)
+    # get_nfl_rush_atts(workbook)
+    # get_nfl_def_stats(workbook)
     # pull stats from footballoutsiders.com
-    get_dvoa_rankings(wb)
-    get_oline_rankings(wb)
-    get_dline_rankings(wb)
-    get_qb_stats_FO(wb)
-    # pull vegas stats from rotogrinders.com
-    get_vegas_rg(wb)
+    # get_dvoa_rankings(workbook)
+    # get_oline_rankings(workbook)
+    # get_dline_rankings(workbook)
+    # get_qb_stats_outsiders(workbook)
+    # pull vegas stats from oneweekseason.com
+    get_vegas_ows(workbook)
 
     # test
-    # write_RB_cols(wb)
+    # write_RB_cols(workbook)
 
     # set conditional formatting ranges
-    style_ranges(wb)
+    style_ranges(workbook)
 
     # apply left/right borders for sections
-    apply_border(wb)
+    apply_border(workbook)
 
     # inserts ecr/salary ranks and +/-
-    insert_ranks(wb)
+    insert_ranks(workbook)
 
     # apply column widths
-    apply_column_widths(wb)
+    apply_column_widths(workbook)
 
     # freeze header
-    freeze_header(wb)
+    freeze_header(workbook)
 
     # order sheets
-    # wb._sheets =[wb._sheets[i] for i in myorder]
-    order_sheets(wb)
+    # workbook._sheets =[workbook._sheets[i] for i in myorder]
+    order_sheets(workbook)
 
     # save workbook (.xlsx file)
-    wb.remove(ws1)  # remove blank worksheet
-    wb.save(filename=dest_filename)
+    workbook.remove(ws1)  # remove blank worksheet
+    workbook.save(filename=dest_filename)
 
     # remove rows without an ECR ranking (likely out or useless))
     # wb_data_only = load_workbook(dest_filename, data_only=True)
 
     # TODO ryne hangouts
-    # 1 Add a column for Salary rank vs weekly ranking to show best value plays (example + -, x player ranks 7 but is the 15th most expensive, -8)
+    # 1 Add a column for Salary rank vs weekly ranking to show best value plays
+    #   (example + -, x player ranks 7 but is the 15th most expensive, -8)
     # 2 add Defensive Rank vs QB
     # 3 is it possible to bring in RG rankings? (not a big deal)
     # 4 On the Def tab, I think the implied total should be of the team the defense is against, not their own implied total
