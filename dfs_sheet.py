@@ -2,14 +2,13 @@
 
 import csv
 import json
-import re
 from os import makedirs, path
 
 import requests
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
 from openpyxl.formatting.rule import ColorScaleRule
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side, colors
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 
@@ -1406,7 +1405,7 @@ def position_tab(workbook, values, title, fdraft_dict=None):
         )
 
     row = all_positions_fields + positional_fields
-    
+
     # center all cells horzitontally/vertically in row
     for i, text in enumerate(row, start=1):
         nice = workbook[title].cell(row=append_row, column=i, value=text)

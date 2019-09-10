@@ -1,15 +1,16 @@
 import csv
 import json
 import re
-import requests
 from os import path
+
+import requests
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, PatternFill, Border, Side, Font
 from openpyxl.formatting.rule import ColorScaleRule
-from openpyxl.utils import get_column_letter, column_index_from_string
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import column_index_from_string, get_column_letter
 
-from player import Player, QB, RB, WR, TE, DST
+from player import DST, QB, RB, TE, WR, Player
 
 
 def style_range(ws, cell_range, border=Border(), fill=None, font=None, alignment=None):
@@ -205,7 +206,7 @@ def get_lineups_nfl_snaps():
     """Get players' snaps from lineups.com."""
     ENDPOINT = "https://api.lineups.com/nfl/fetch/snaps/2018/OFF"
     fn = "nfl_snaps.json"
-    dir = "sources"
+    dir = 'sources'
     filename = path.join(dir, fn)
 
     # if file doesn't exist, let's pull it. otherwise - use the file.
@@ -1437,9 +1438,9 @@ def excel_apply_sheet_order(wb):
 
 
 def main():
-    fn = 'DKSalaries_week11_full.csv'
-    fdraft_csv = 'FDraft_week11_full.csv'
-    dest_filename = 'player_sheet.xlsx'
+    fn = "DKSalaries_week11_full.csv"
+    fdraft_csv = "FDraft_week11_full.csv"
+    dest_filename = "player_sheet.xlsx"
 
     # create workbook/worksheet
     wb = Workbook()
